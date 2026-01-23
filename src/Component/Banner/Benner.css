@@ -1,0 +1,53 @@
+.bannerBox {
+  width: 70%;
+  height: 96vh;
+  /* background-color: red; */
+  margin: auto;
+  display: flex;
+}
+
+/* Logo */
+.bannerImage {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Text container */
+.titleBox {
+  flex: 1;
+  display: flex;
+  justify-content: left;
+  align-items: center;
+}
+
+/* Remove gap + align tightly */
+.textWrapper {
+  text-align: center;
+  line-height: 1.1;
+}
+
+/* Main title */
+.mainTitle {
+  font-size: 5rem;   /* BIGGER text */
+  font-weight: 800;
+  margin: 0;         /* remove gap */
+}
+
+/* Slogan */
+.slogan {
+  margin-top: 10px;
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+  font-weight: 500;
+  color: black;
+}
+
+/* Colors */
+.magic {
+  color: #1e90ff;
+}
+
+.lamp {
+  color: #ff9800;
+}
