@@ -99,7 +99,20 @@ export default function History() {
   const fetchData = async () => {
     setLoading(true);
     const res = await getAllRequestedServices();
-    setRequests(res.data?.results ?? res.results);
+    
+    // Handle different response formats safely
+    if (res?.data?.results) {
+      setRequests(res.data.results);
+    } else if (res?.data && Array.isArray(res.data)) {
+      setRequests(res.data);
+    } else if (Array.isArray(res)) {
+      setRequests(res);
+    } else {
+      // If response structure is different, log it for debugging
+      console.warn('Unexpected response format:', res);
+      setRequests([]);
+    }
+    
     setLoading(false);
   };
 
@@ -130,75 +143,79 @@ export default function History() {
       <div className="p-6 bg-white rounded-xl shadow">
         <h1 className="text-2xl font-bold mb-4">Service Request History</h1>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full border">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="p-3 text-left">Request ID</th>
-                <th className="p-3 text-left">Customer</th>
-                <th className="p-3 text-left">Address</th>
-                <th className="p-3 text-left">Service</th>
-                <th className="p-3 text-left">Status</th>
-                <th className="p-3 text-left">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {requests.map((req) => (
-                <tr key={req.id} className="border-t">
-                  <td className="p-3 font-mono text-sm">
-                    {req.request_id}
-                  </td>
-
-                  <td className="p-3">
-                    <div className="font-medium">{req.customer_name}</div>
-                    <div className="text-xs text-gray-500">
-                      {req.mobile_number}
-                    </div>
-                  </td>
-
-                  {/* ✅ ADDRESS SHOWN HERE */}
-                  <td className="p-3 max-w-xs text-sm text-gray-700">
-                    {req.address}
-                  </td>
-
-                  <td className="p-3 text-sm">
-                    <div>{req.category_name}</div>
-                    <div className="text-xs text-gray-500">
-                      {req.subcategory_name ?? "—"}
-                    </div>
-                  </td>
-
-                  <td className="p-3">
-                    <span className="px-2 py-1 text-xs rounded bg-gray-100">
-                      {req.status}
-                    </span>
-                  </td>
-
-                  <td className="p-3 space-x-2">
-                    {actions(req.status).map((a) => (
-                      <button
-                        key={a}
-                        disabled={updatingId === req.id}
-                        onClick={() => updateStatus(req.id, a)}
-                        className="px-3 py-1 text-xs bg-black text-white rounded"
-                      >
-                        {a}
-                      </button>
-                    ))}
-
-                    <button
-                      onClick={() => setMapData(req)}
-                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded"
-                    >
-                      View Map
-                    </button>
-                  </td>
+        {requests.length === 0 ? (
+          <p className="text-center py-8 text-gray-500">No service requests found</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full border">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="p-3 text-left">Request ID</th>
+                  <th className="p-3 text-left">Customer</th>
+                  <th className="p-3 text-left">Address</th>
+                  <th className="p-3 text-left">Service</th>
+                  <th className="p-3 text-left">Status</th>
+                  <th className="p-3 text-left">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody>
+                {requests.map((req) => (
+                  <tr key={req.id} className="border-t">
+                    <td className="p-3 font-mono text-sm">
+                      {req.request_id}
+                    </td>
+
+                    <td className="p-3">
+                      <div className="font-medium">{req.customer_name}</div>
+                      <div className="text-xs text-gray-500">
+                        {req.mobile_number}
+                      </div>
+                    </td>
+
+                    {/* ✅ ADDRESS SHOWN HERE */}
+                    <td className="p-3 max-w-xs text-sm text-gray-700">
+                      {req.address}
+                    </td>
+
+                    <td className="p-3 text-sm">
+                      <div>{req.category_name}</div>
+                      <div className="text-xs text-gray-500">
+                        {req.subcategory_name ?? "—"}
+                      </div>
+                    </td>
+
+                    <td className="p-3">
+                      <span className="px-2 py-1 text-xs rounded bg-gray-100">
+                        {req.status}
+                      </span>
+                    </td>
+
+                    <td className="p-3 space-x-2">
+                      {actions(req.status).map((a) => (
+                        <button
+                          key={a}
+                          disabled={updatingId === req.id}
+                          onClick={() => updateStatus(req.id, a)}
+                          className="px-3 py-1 text-xs bg-black text-white rounded"
+                        >
+                          {a}
+                        </button>
+                      ))}
+
+                      <button
+                        onClick={() => setMapData(req)}
+                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded"
+                      >
+                        View Map
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {mapData && (

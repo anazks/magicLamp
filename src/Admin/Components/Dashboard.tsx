@@ -13,7 +13,6 @@ import {
 
 import AddCategory from './Addcategory';
 import AddSubCategory from './AddSubCategory';
-import AddService from './AddService';
 import History from './Hostory'; // Note: was written as Hostory in your import
 import { getAllServiceCategory, deleteCategory } from '../../Api/Service';
 
