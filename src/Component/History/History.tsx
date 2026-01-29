@@ -190,14 +190,14 @@ export default function History() {
                       Details
                     </button>
 
-                    {item.status.toLowerCase() === "pending" && (
+                    {/* {item.status.toLowerCase() === "pending" && (
                       <button
                         onClick={() => callCustomer(item.mobile_number)}
                         className="px-4 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700"
                       >
                         Call
                       </button>
-                    )}
+                    )} */}
 
                     <button
                       onClick={() => openMap(item)}

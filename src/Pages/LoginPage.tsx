@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { FaEnvelope, FaKey, FaGoogle, FaGithub, FaCheckCircle, FaTimes } from "react-icons/fa";
+import { FaEnvelope, FaKey, FaGoogle, FaCheckCircle, FaTimes } from "react-icons/fa";
 import { useNavigate, Navigate } from "react-router-dom";
 import logo from '../assets/logo.png';
 import { generateOTP, otpVerificationLogin } from '../Api/Auth';
 import { useAuth } from "../Context/userContext";
 
 // ────────────────────────────────────────────────
-// Custom Toast Component
+// Custom Toast Component (kept mostly same, just lighter)
 // ────────────────────────────────────────────────
 interface ToastProps {
   message: string;
@@ -27,48 +27,28 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
     info: 'text-blue-800',
   };
 
-  const iconColor = {
-    success: 'text-green-500',
-    error: 'text-red-500',
-    info: 'text-blue-500',
-  };
-
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 4000);
-
+    const timer = setTimeout(onClose, 4200);
     return () => clearTimeout(timer);
   }, [onClose]);
 
   return (
     <div
-      className={`fixed top-6 right-6 z-50 min-w-[300px] max-w-md border rounded-xl shadow-lg p-4 ${
-        bgColor[type]
-      } animate-fadeInUp`}
+      className={`fixed top-6 right-6 z-50 min-w-[320px] border rounded-2xl p-4 shadow-xl ${bgColor[type]} animate-fadeInUp`}
     >
       <div className="flex items-start gap-3">
-        <div className={`flex-shrink-0 mt-0.5 ${iconColor[type]}`}>
-          {type === 'success' ? (
-            <FaCheckCircle className="w-5 h-5" />
-          ) : type === 'error' ? (
-            <FaTimes className="w-5 h-5" />
-          ) : (
-            <FaEnvelope className="w-5 h-5" />
-          )}
+        <div className={`mt-0.5 ${textColor[type]} text-xl`}>
+          {type === 'success' ? <FaCheckCircle /> : type === 'error' ? <FaTimes /> : <FaEnvelope />}
         </div>
         <div className="flex-1">
-          <p className={`text-sm font-medium ${textColor[type]}`}>{message}</p>
+          <p className={`font-medium ${textColor[type]}`}>{message}</p>
         </div>
-        <button
-          onClick={onClose}
-          className={`flex-shrink-0 ${textColor[type]} hover:opacity-70 transition-opacity`}
-        >
-          <FaTimes className="w-4 h-4" />
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
+          <FaTimes />
         </button>
       </div>
       <div
-        className={`absolute bottom-0 left-0 h-1 ${
+        className={`h-1 mt-3 rounded-full ${
           type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
         } animate-progress`}
       />
@@ -77,10 +57,10 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
 };
 
 // ────────────────────────────────────────────────
-// Main Login Page Component
+// Main Login Page – Redesigned
 // ────────────────────────────────────────────────
 export default function LoginPage() {
-  const { token: contextToken, setToken } = useAuth(); // user was unused → removed
+  const { token: contextToken, setToken } = useAuth();
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -102,20 +82,14 @@ export default function LoginPage() {
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Countdown timer
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-
     if (countdown > 0) {
-      timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+      const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+      return () => clearTimeout(timer);
     }
-
-    return () => clearTimeout(timer);
   }, [countdown]);
 
-  // Redirect if already logged in
   const storedToken = localStorage.getItem("accessToken") || contextToken;
-
   if (storedToken) {
     return <Navigate to="/home" replace />;
   }
@@ -125,14 +99,14 @@ export default function LoginPage() {
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, email: e.target.value }));
+    setFormData(prev => ({ ...prev, email: e.target.value }));
   };
 
   const handleOTPChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
     const newOTP = [...formData.otp];
-    newOTP[index] = value.slice(-1); // only last character
-    setFormData((prev) => ({ ...prev, otp: newOTP }));
+    newOTP[index] = value.slice(-1);
+    setFormData(prev => ({ ...prev, otp: newOTP }));
 
     if (value && index < 5) {
       otpRefs.current[index + 1]?.focus();
@@ -149,14 +123,14 @@ export default function LoginPage() {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text").trim();
     if (/^\d{6}$/.test(pasted)) {
-      setFormData((prev) => ({ ...prev, otp: pasted.split("") }));
+      setFormData(prev => ({ ...prev, otp: pasted.split("") }));
       otpRefs.current[5]?.focus();
     }
   };
 
   const sendOTP = async () => {
     if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      showToast("Please enter a valid email address", "error");
+      showToast("Please enter a valid email", "error");
       return;
     }
 
@@ -166,9 +140,9 @@ export default function LoginPage() {
       localStorage.setItem("loginEmail", formData.email);
       setIsOTPSent(true);
       setCountdown(60);
-      showToast(`OTP sent successfully to ${formData.email}`, "success");
+      showToast(`OTP sent to ${formData.email}`, "success");
     } catch (err: any) {
-      showToast(err.message || "Failed to send OTP. Please try again.", "error");
+      showToast(err.message || "Failed to send OTP", "error");
     } finally {
       setIsLoading(false);
     }
@@ -176,11 +150,10 @@ export default function LoginPage() {
 
   const resendOTP = async () => {
     if (countdown > 0) return;
-
     const email = localStorage.getItem("loginEmail");
     if (!email) {
       setIsOTPSent(false);
-      showToast("Email not found. Please enter email again.", "error");
+      showToast("Please enter email again", "error");
       return;
     }
 
@@ -188,10 +161,9 @@ export default function LoginPage() {
     try {
       await generateOTP({ identifier: email });
       setCountdown(60);
-      showToast("New OTP sent successfully!", "success");
+      showToast("New OTP sent", "success");
     } catch (err: any) {
-      showToast(err.message || "Failed to resend OTP.", "error");
-      setCountdown(0);
+      showToast(err.message || "Failed to resend OTP", "error");
     } finally {
       setIsLoading(false);
     }
@@ -200,28 +172,23 @@ export default function LoginPage() {
   const verifyOTP = async () => {
     const otp = formData.otp.join("");
     if (otp.length !== 6) {
-      showToast("Please enter complete 6-digit OTP", "error");
+      showToast("Enter complete 6-digit OTP", "error");
       return;
     }
 
     setIsLoading(true);
     try {
       const email = localStorage.getItem("loginEmail");
-      if (!email) {
-        showToast("Email not found. Please start over.", "error");
-        return;
-      }
+      if (!email) throw new Error("Email missing");
 
       const res = await otpVerificationLogin({ otp, identifier: email });
 
-      // Store tokens
       setToken(res.access);
       localStorage.setItem("accessToken", res.access);
       if (res.refresh) localStorage.setItem("refreshToken", res.refresh);
-
       localStorage.removeItem("loginEmail");
 
-      showToast("Login successful! Redirecting...", "success");
+      showToast("Login successful!", "success");
 
       setTimeout(() => {
         if (res.is_admin || res.role === "admin") {
@@ -229,10 +196,10 @@ export default function LoginPage() {
         } else {
           navigate("/home", { replace: true });
         }
-      }, 800);
+      }, 700);
     } catch (err: any) {
-      showToast(err.message || "Invalid OTP. Please try again.", "error");
-      setFormData((prev) => ({ ...prev, otp: Array(6).fill("") }));
+      showToast(err.message || "Invalid OTP", "error");
+      setFormData(prev => ({ ...prev, otp: Array(6).fill("") }));
       otpRefs.current[0]?.focus();
     } finally {
       setIsLoading(false);
@@ -241,98 +208,43 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isOTPSent) {
-      verifyOTP();
-    } else {
-      sendOTP();
-    }
+    if (isOTPSent) verifyOTP();
+    else sendOTP();
   };
 
   const handleGoBack = () => {
     setIsOTPSent(false);
     localStorage.removeItem("loginEmail");
     setFormData({ email: "", otp: Array(6).fill("") });
-    showToast("Enter your email to receive OTP", "info");
   };
 
   return (
     <>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        {/* Background orbs */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-20 -left-20 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-40 animate-blob-slow"></div>
-          <div className="absolute top-1/3 -right-20 w-80 h-80 bg-indigo-100 rounded-full blur-3xl opacity-30 animate-blob-slow animation-delay-3000"></div>
-          <div className="absolute -bottom-20 left-1/3 w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-20 animate-blob-slow animation-delay-6000"></div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50/60 to-purple-50/40 py-12 px-5">
+        <div className="w-full max-w-md">
+          {/* Logo + Title */}
+          <div className="text-center mb-10">
+            <img
+              src={logo}
+              alt="Logo"
+              className="mx-auto h-20 w-auto mb-6 drop-shadow-md"
+            />
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
+              Welcome Back
+            </h1>
+            <p className="mt-3 text-gray-600">
+              {isOTPSent ? "Enter the 6-digit code we sent" : "Sign in with your email"}
+            </p>
+          </div>
 
-        <style>{`
-          @keyframes blob-slow {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50%      { transform: translate(40px, -40px) scale(1.08); }
-          }
-          @keyframes float-gentle {
-            0%, 100% { transform: translateY(0); }
-            50%      { transform: translateY(-12px); }
-          }
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(24px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes checkmark {
-            0%   { transform: scale(0); opacity: 0; }
-            50%  { transform: scale(1.3); }
-            100% { transform: scale(1); opacity: 1; }
-          }
-          @keyframes progress {
-            from { width: 100%; }
-            to   { width: 0%; }
-          }
-          .animate-blob-slow { animation: blob-slow 12s infinite ease-in-out; }
-          .animation-delay-3000 { animation-delay: 3s; }
-          .animation-delay-6000 { animation-delay: 6s; }
-          .animate-float-gentle { animation: float-gentle 6s ease-in-out infinite; }
-          .animate-fadeInUp { animation: fadeInUp 0.7s ease-out forwards; }
-          .animate-checkmark { animation: checkmark 0.6s ease-out forwards; }
-          .animate-progress { animation: progress 4s linear forwards; }
-        `}</style>
-
-        <div className="w-full max-w-md relative z-10">
-          <div className="bg-white/85 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-10 border border-white/30">
-            {/* Logo */}
-            <div className="flex justify-center mb-8">
-              <div className="relative animate-float-gentle">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-400/30 to-indigo-400/20 rounded-full blur-2xl"></div>
-                <img
-                  src={logo}
-                  alt="Logo"
-                  className="w-24 h-24 object-contain relative z-10 drop-shadow-xl"
-                />
-              </div>
-            </div>
-
-            {/* Title */}
-            <div className="text-center mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Welcome Back
-              </h2>
-              <p className="mt-3 text-gray-600">
-                {isOTPSent ? "Enter the OTP sent to your email" : "Sign in with your email"}
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Email */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 border border-gray-100/80">
+            <form onSubmit={handleSubmit} className="space-y-7">
+              {/* Email Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
+                  Email address
                 </label>
                 <div className="relative">
                   <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -341,40 +253,38 @@ export default function LoginPage() {
                     value={formData.email}
                     onChange={handleEmailChange}
                     disabled={isOTPSent}
-                    placeholder="name@example.com"
-                    className={`w-full pl-11 pr-4 py-3.5 border-2 rounded-xl focus:outline-none focus:border-indigo-500 transition-all ${
+                    placeholder="you@example.com"
+                    className={`w-full pl-11 pr-4 py-3.5 border rounded-2xl transition-all focus:outline-none focus:ring-2 focus:ring-indigo-200/50 ${
                       isOTPSent
-                        ? "bg-green-50/60 border-green-200 text-gray-700"
-                        : "bg-white border-gray-200 focus:ring-2 focus:ring-indigo-200"
+                        ? "bg-green-50/40 border-green-200 text-gray-700 cursor-not-allowed"
+                        : "bg-white border-gray-200 hover:border-indigo-300 focus:border-indigo-400"
                     }`}
                   />
                   {isOTPSent && (
-                    <FaCheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500 animate-checkmark" />
+                    <FaCheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500" />
                   )}
                 </div>
               </div>
 
-              {/* OTP */}
+              {/* OTP Section */}
               {isOTPSent && (
                 <div className="space-y-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    OTP (6 digits)
+                  <label className="block text-sm font-medium text-gray-700">
+                    Verification Code
                   </label>
-                  <div className="flex gap-3 justify-center" onPaste={handlePaste}>
+                  <div className="flex justify-center gap-3" onPaste={handlePaste}>
                     {formData.otp.map((digit, idx) => (
                       <input
                         key={idx}
-                        ref={(el) => {
-                          otpRefs.current[idx] = el;
-                        }}
+                        ref={el => { otpRefs.current[idx] = el; }}
                         type="text"
                         inputMode="numeric"
                         maxLength={1}
                         value={digit}
-                        onChange={(e) => handleOTPChange(idx, e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(idx, e)}
+                        onChange={e => handleOTPChange(idx, e.target.value)}
+                        onKeyDown={e => handleKeyDown(idx, e)}
                         autoFocus={idx === 0}
-                        className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200/30 transition-all bg-white"
+                        className="w-12 h-14 text-center text-2xl font-bold border border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200/30 transition-all bg-white"
                       />
                     ))}
                   </div>
@@ -385,41 +295,29 @@ export default function LoginPage() {
                       type="button"
                       onClick={resendOTP}
                       disabled={isLoading || countdown > 0}
-                      className={`font-medium ${
+                      className={`font-medium transition-colors ${
                         countdown > 0 || isLoading
                           ? "text-gray-400 cursor-not-allowed"
                           : "text-indigo-600 hover:text-indigo-800"
-                      } transition-colors`}
+                      }`}
                     >
-                      {countdown > 0 ? `Resend in ${countdown}s` : "Resend OTP"}
+                      {countdown > 0 ? `Resend in ${countdown}s` : "Resend"}
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Submit */}
+              {/* Main Action Button */}
               <button
                 type="submit"
                 disabled={isLoading || (isOTPSent && formData.otp.join("").length !== 6)}
-                className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-100"
+                className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold rounded-2xl shadow-md hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed transform hover:scale-[1.02]"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center gap-3">
                     <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                        className="opacity-25"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
-                        className="opacity-75"
-                      />
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" className="opacity-25" />
+                      <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" className="opacity-75" />
                     </svg>
                     {isOTPSent ? "Verifying..." : "Sending..."}
                   </div>
@@ -434,7 +332,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleGoBack}
-                  className="w-full py-3 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="w-full py-3 border border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-colors"
                 >
                   Try another email
                 </button>
@@ -442,7 +340,7 @@ export default function LoginPage() {
             </form>
 
             {/* Divider */}
-            <div className="relative my-8">
+            <div className="relative my-10">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200"></div>
               </div>
@@ -451,31 +349,27 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Social buttons (placeholders) */}
-            <div className="grid grid-cols-2 gap-4">
-              <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                <FaGoogle className="text-red-500" />
-                Google
-              </button>
-              <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                <FaGithub />
-                GitHub
+            {/* Google Button – centered, full width */}
+            <div className="flex justify-center">
+              <button className="flex items-center justify-center gap-3 w-full max-w-xs py-3.5 border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors font-medium text-gray-700">
+                <FaGoogle className="text-red-500 text-xl" />
+                Continue with Google
               </button>
             </div>
 
             {/* Sign up link */}
-            <p className="mt-8 text-center text-gray-600">
+            <p className="mt-10 text-center text-gray-600">
               New here?{" "}
-              <a href="/signup" className="font-medium text-indigo-600 hover:text-indigo-800">
-                Create account
+              <a href="/register" className="font-medium text-indigo-600 hover:text-indigo-800 underline-offset-2 hover:underline">
+                Create an account
               </a>
             </p>
           </div>
 
-          {/* Security note */}
-          <p className="mt-6 text-center text-sm text-gray-500 flex items-center justify-center gap-2">
+          {/* Security hint */}
+          <p className="mt-8 text-center text-sm text-gray-500 flex items-center justify-center gap-2">
             <FaKey className="text-indigo-500" />
-            OTP-based • Secure & Fast
+            Passwordless • Secure OTP login
           </p>
         </div>
       </div>

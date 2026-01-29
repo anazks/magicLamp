@@ -124,9 +124,9 @@ export default function Banner() {
               </p>
 
               {/* Subtitle */}
-              <p className="mt-4 text-base sm:text-lg text-slate-600 font-medium italic max-w-lg mx-auto lg:mx-0">
+              {/* <p className="mt-4 text-base sm:text-lg text-slate-600 font-medium italic max-w-lg mx-auto lg:mx-0">
                 Where timeless wishes meet modern convenience.
-              </p>
+              </p> */}
 
               {/* CTA Button */}
               <div className="mt-10 relative group">
