@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FaChartLine,
   FaWallet,
   FaClock,
-  FaArrowRight,
   FaPlus,
   FaHistory,
   FaTools,
@@ -11,10 +10,11 @@ import {
   FaChevronUp,
   FaTrashAlt,
 } from 'react-icons/fa';
+
 import AddCategory from './Addcategory';
 import AddSubCategory from './AddSubCategory';
 import AddService from './AddService';
-import History from './Hostory'; // ← your History component
+import History from './Hostory'; // Note: was written as Hostory in your import
 import { getAllServiceCategory, deleteCategory } from '../../Api/Service';
 
 interface SubCategoryItem {
@@ -59,7 +59,7 @@ export default function Dashboard() {
     activeBookings: 2,
   };
 
-  // Fetch categories
+  // Fetch all service categories
   const fetchServices = async () => {
     try {
       setLoadingServices(true);
@@ -95,7 +95,6 @@ export default function Dashboard() {
   const toggleCategory = (categoryId: number) => {
     const service = services.find((s) => s.id === categoryId);
     if (!service || service.subcategories.length === 0) return;
-
     setExpandedCategory((prev) => (prev === categoryId ? null : categoryId));
   };
 
@@ -114,8 +113,6 @@ export default function Dashboard() {
 
       alert(`Category "${name}" deleted successfully!`);
       setShowDeleteConfirm(null);
-
-      // Refresh list
       await fetchServices();
     } catch (err: any) {
       console.error('Delete failed:', err);
@@ -133,10 +130,6 @@ export default function Dashboard() {
     setShowDeleteConfirm(null);
   };
 
-  const toggleSection = (section: typeof activeSection) => {
-    setActiveSection((prev) => (prev === section ? 'none' : section));
-  };
-
   const getStatusBadge = (isActive: boolean) =>
     isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
 
@@ -149,7 +142,7 @@ export default function Dashboard() {
           <p className="mt-1 text-gray-600">Welcome back, anaz</p>
         </div>
 
-        {/* Stats */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
           <div className="bg-white rounded-xl p-5 shadow border border-gray-200">
             <p className="text-sm text-gray-600 font-medium">Total Bookings</p>
@@ -177,11 +170,13 @@ export default function Dashboard() {
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-10">
           <button
-            onClick={() => toggleSection('add-category')}
+            onClick={() => setActiveSection('add-category')}
             className={`flex flex-col items-center justify-center p-5 rounded-xl shadow transition-all ${
-              activeSection === 'add-category' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-white hover:bg-blue-50 border border-gray-200'
+              activeSection === 'add-category'
+                ? 'bg-blue-600 text-white shadow-lg scale-105'
+                : 'bg-white hover:bg-blue-50 border border-gray-200'
             }`}
           >
             <FaPlus className="text-2xl mb-2" />
@@ -189,22 +184,23 @@ export default function Dashboard() {
           </button>
 
           <button
-            onClick={() => toggleSection('add-subcategory')}
+            onClick={() => setActiveSection('add-subcategory')}
             className={`flex flex-col items-center justify-center p-5 rounded-xl shadow transition-all ${
-              activeSection === 'add-subcategory' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-white hover:bg-blue-50 border border-gray-200'
+              activeSection === 'add-subcategory'
+                ? 'bg-blue-600 text-white shadow-lg scale-105'
+                : 'bg-white hover:bg-blue-50 border border-gray-200'
             }`}
           >
             <FaPlus className="text-2xl mb-2" />
             <span className="font-medium">Add Subcategory</span>
           </button>
 
-          {/* Add Service button - commented out in your code, keeping it commented */}
-          {/* <button onClick={() => toggleSection('add-service')} ... > */}
-
           <button
-            onClick={() => toggleSection('history')}
+            onClick={() => setActiveSection('history')}
             className={`flex flex-col items-center justify-center p-5 rounded-xl shadow transition-all ${
-              activeSection === 'history' ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-white hover:bg-indigo-50 border border-gray-200'
+              activeSection === 'history'
+                ? 'bg-indigo-600 text-white shadow-lg scale-105'
+                : 'bg-white hover:bg-indigo-50 border border-gray-200'
             }`}
           >
             <FaHistory className="text-2xl mb-2" />
@@ -212,7 +208,7 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Content Area */}
+        {/* Main Content Area */}
         <div className="space-y-8">
           {/* Add Forms */}
           {activeSection === 'add-category' && (
@@ -229,14 +225,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {activeSection === 'add-service' && (
-            <div className="bg-white rounded-xl shadow border p-6">
-              <h2 className="text-xl font-semibold mb-5">Add New Service</h2>
-              <AddService onClose={() => setActiveSection('none')} />
-            </div>
-          )}
-
-          {/* Main Content – History OR All Services */}
+          {/* History View */}
           {activeSection === 'history' ? (
             <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200">
@@ -248,7 +237,7 @@ export default function Dashboard() {
               <History />
             </div>
           ) : (
-            // Default view: All Services
+            // Services List (default view)
             <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -266,7 +255,7 @@ export default function Dashboard() {
               ) : (
                 <div className="divide-y divide-gray-100">
                   {services.map((service) => {
-                    const hasSubs = service.subcategories?.length > 0;
+                    const hasSubs = service.subcategories.length > 0;
 
                     return (
                       <div key={service.id}>
@@ -276,7 +265,6 @@ export default function Dashboard() {
                           }`}
                           onClick={() => hasSubs && toggleCategory(service.id)}
                         >
-                          {/* ... same row content as before ... */}
                           <div className="flex items-center gap-4 flex-1">
                             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold">
                               {service.name.charAt(0)}
@@ -393,7 +381,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Custom Delete Confirmation Modal */}
+        {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">

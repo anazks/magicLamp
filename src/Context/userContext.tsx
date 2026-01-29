@@ -5,8 +5,8 @@ import {
   useEffect,
   useMemo,
   useState,
-  ReactNode,
 } from "react";
+import type { ReactNode, Dispatch, SetStateAction } from "react";
 import CryptoJS from "crypto-js";
 
 /* =========================
@@ -23,9 +23,9 @@ interface AuthContextType {
   token: string | null;
   setToken: (token: string | null) => void;
   user: any;
-  setUser: React.Dispatch<React.SetStateAction<any>>;
+  setUser: Dispatch<SetStateAction<any>>;
   isAdmin: boolean;
-  setIsAdmin: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsAdmin: Dispatch<SetStateAction<boolean>>;
 }
 
 interface AuthProviderProps {
@@ -63,9 +63,7 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
 
   /* ---------- State ---------- */
 
-  const [token, setTokenState] = useState<string | null>(() =>
-    getDecryptedToken()
-  );
+  const [token, setTokenState] = useState<string | null>(getDecryptedToken);
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
@@ -96,27 +94,6 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
       delete axios.defaults.headers.common.Authorization;
     }
   }, [token]);
-
-  /* ---------- Fetch User Info ---------- */
-  // Uncomment & integrate API when ready
-  /*
-  useEffect(() => {
-    const fetchUser = async () => {
-      if (!token) return;
-
-      try {
-        const res = await getUserInfo();
-        setUser(res.data);
-        setIsAdmin(res.data?.role === "admin");
-      } catch (error) {
-        console.error("User fetch failed:", error);
-        setToken(null);
-      }
-    };
-
-    fetchUser();
-  }, [token]);
-  */
 
   /* ---------- Memoized Context ---------- */
 

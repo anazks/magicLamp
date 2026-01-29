@@ -45,8 +45,8 @@ export default function AddSubCategory({ onClose, onSuccess }: AddSubCategoryPro
 
         // Make sure each item has id & name
         const formatted = categoryList
-          .filter(item => item?.id && item?.name)
-          .map(item => ({
+          .filter((item: any) => item?.id && item?.name)
+          .map((item: any) => ({
             id: Number(item.id),
             name: String(item.name),
           }));
@@ -139,15 +139,9 @@ export default function AddSubCategory({ onClose, onSuccess }: AddSubCategoryPro
         submitData.append('image', imageFile);
       }
 
-      // Create subcategory – adjust method name if needed
-      // Common patterns:
-      //   ServiceSubCategory.create(submitData, { headers... })
-      //   ServiceSubCategory.post('/subcategories/', submitData, { ... })
-      const response = await ServiceSubCategory(submitData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // Create subcategory - note: ServiceSubCategory should be a function that accepts FormData
+      // The exact implementation depends on your API structure
+      const response = await ServiceSubCategory(submitData); // Removed second argument
 
       const created = response?.data || response;
 
