@@ -1,7 +1,6 @@
-import React from 'react'
-import Service from '../Component/Services/Service'
 import BottomBar from '../Component/Bars/BottomBar'
 import NavBar from '../Component/Bars/NavBar'
+
 
 export default function Home() {
   return (
@@ -12,7 +11,7 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <Service />
+      {/* <Service /> */}
 
       {/* Mobile Bottom Bar */}
       <div className="block md:hidden">
