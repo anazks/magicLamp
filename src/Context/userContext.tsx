@@ -1,92 +1,154 @@
 import axios from "axios";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+} from "react";
 import CryptoJS from "crypto-js";
-// import {getUserInfo} from '../Services/userApi'
-const SECRET_KEY = "your_secret_key_123"; // Encryption key
-const AuthContext = createContext();
 
-const AuthProvider = ({ children }) => {
-  // Function to decrypt token
-  const getDecryptedToken = () => {
+/* =========================
+   CONSTANTS
+========================= */
+
+const SECRET_KEY = "your_secret_key_123";
+
+/* =========================
+   TYPES
+========================= */
+
+interface AuthContextType {
+  token: string | null;
+  setToken: (token: string | null) => void;
+  user: any;
+  setUser: React.Dispatch<React.SetStateAction<any>>;
+  isAdmin: boolean;
+  setIsAdmin: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+/* =========================
+   CONTEXT
+========================= */
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/* =========================
+   PROVIDER
+========================= */
+
+const AuthProvider = ({ children }: AuthProviderProps) => {
+  /* ---------- Helpers ---------- */
+
+  const getDecryptedToken = (): string | null => {
+    if (typeof window === "undefined") return null;
+
     const encryptedToken = localStorage.getItem("token");
     if (!encryptedToken) return null;
 
     try {
       const bytes = CryptoJS.AES.decrypt(encryptedToken, SECRET_KEY);
       const decryptedToken = bytes.toString(CryptoJS.enc.Utf8);
-      return decryptedToken || null; // Convert decrypted bytes to string
+      return decryptedToken || null;
     } catch (error) {
-      console.error("Error decrypting token:", error);
+      console.error("Token decryption failed:", error);
       return null;
     }
   };
 
-  // Initialize state with decrypted token only on mount
-  const [token, setToken_] = useState(() => getDecryptedToken());
-  const [user, setUser] = useState(null); // User state
-  // FIXED: Changed variable naming to follow camelCase convention consistently
-  const [isAdmin, setIsAdmin] = useState(false);
+  /* ---------- State ---------- */
 
-  console.log(token, "Token in context");
+  const [token, setTokenState] = useState<string | null>(() =>
+    getDecryptedToken()
+  );
+  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
-  // Function to encrypt and store token
-  const setToken = (newToken) => {
+  /* ---------- Token Setter ---------- */
+
+  const setToken = (newToken: string | null) => {
+    if (typeof window === "undefined") return;
+
     if (newToken) {
-      const encryptedToken = CryptoJS.AES.encrypt(newToken, SECRET_KEY).toString();
-      localStorage.setItem("token", encryptedToken);
+      const encrypted = CryptoJS.AES.encrypt(
+        newToken,
+        SECRET_KEY
+      ).toString();
+      localStorage.setItem("token", encrypted);
     } else {
       localStorage.removeItem("token");
     }
-    setToken_(newToken);
+
+    setTokenState(newToken);
   };
 
-  // Set axios authorization header when token changes
+  /* ---------- Axios Auth Header ---------- */
+
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      axios.defaults.headers.common.Authorization = `Bearer ${token}`;
     } else {
-      delete axios.defaults.headers.common["Authorization"];
+      delete axios.defaults.headers.common.Authorization;
     }
   }, [token]);
 
-  // Fetch user info when token is set
+  /* ---------- Fetch User Info ---------- */
+  // Uncomment & integrate API when ready
+  /*
   useEffect(() => {
-    const fetchUserInfo = async () => {
-      if (token) {
-        try {
-          // Call an API to fetch the user data (you can replace this with your actual function)
-        //   const response = await getUserInfo(); // Replace with the correct API endpoint
-        //   console.log(response.data, "User data from API");
-        //   setUser(response.data); // Set user data globally
-        } catch (error) {
-          console.error("Error fetching user info:", error);
-          // Consider handling token expiration or invalid token here
-          // If your backend returns appropriate status codes, you can check for 401/403
-          // and clear the token if needed
-        }
+    const fetchUser = async () => {
+      if (!token) return;
+
+      try {
+        const res = await getUserInfo();
+        setUser(res.data);
+        setIsAdmin(res.data?.role === "admin");
+      } catch (error) {
+        console.error("User fetch failed:", error);
+        setToken(null);
       }
     };
 
-    fetchUserInfo();
-  }, [token]); // Only fetch user info when the token changes
+    fetchUser();
+  }, [token]);
+  */
 
-  // Memoized context value
-  const contextValue = useMemo(
+  /* ---------- Memoized Context ---------- */
+
+  const contextValue = useMemo<AuthContextType>(
     () => ({
       token,
       setToken,
       user,
-      setUser, // Expose setUser to update user state globally
+      setUser,
       isAdmin,
-      setIsAdmin // FIXED: changed from SetIsAdmin to setIsAdmin for consistency
+      setIsAdmin,
     }),
-    [token, user, isAdmin] // FIXED: Added isAdmin as a dependency
+    [token, user, isAdmin]
   );
 
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-// Custom hook to use authentication context
-export const useAuth = () => useContext(AuthContext);
+/* =========================
+   HOOK
+========================= */
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
 
 export default AuthProvider;

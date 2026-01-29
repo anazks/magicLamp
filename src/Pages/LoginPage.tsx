@@ -6,7 +6,7 @@ import { generateOTP, otpVerificationLogin } from '../Api/Auth';
 import { useAuth } from "../Context/userContext";
 
 // ────────────────────────────────────────────────
-// Custom Toast Component (unchanged)
+// Custom Toast Component
 // ────────────────────────────────────────────────
 interface ToastProps {
   message: string;
@@ -18,31 +18,35 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
   const bgColor = {
     success: 'bg-green-50 border-green-200',
     error: 'bg-red-50 border-red-200',
-    info: 'bg-blue-50 border-blue-200'
+    info: 'bg-blue-50 border-blue-200',
   };
-  
+
   const textColor = {
     success: 'text-green-800',
     error: 'text-red-800',
-    info: 'text-blue-800'
+    info: 'text-blue-800',
   };
-  
+
   const iconColor = {
     success: 'text-green-500',
     error: 'text-red-500',
-    info: 'text-blue-500'
+    info: 'text-blue-500',
   };
 
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
     }, 4000);
-    
+
     return () => clearTimeout(timer);
   }, [onClose]);
 
   return (
-    <div className={`fixed top-6 right-6 z-50 min-w-[300px] max-w-md border rounded-xl shadow-lg p-4 ${bgColor[type]} animate-fadeInUp`}>
+    <div
+      className={`fixed top-6 right-6 z-50 min-w-[300px] max-w-md border rounded-xl shadow-lg p-4 ${
+        bgColor[type]
+      } animate-fadeInUp`}
+    >
       <div className="flex items-start gap-3">
         <div className={`flex-shrink-0 mt-0.5 ${iconColor[type]}`}>
           {type === 'success' ? (
@@ -63,7 +67,11 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
           <FaTimes className="w-4 h-4" />
         </button>
       </div>
-      <div className={`absolute bottom-0 left-0 h-1 ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'} animate-progress`}></div>
+      <div
+        className={`absolute bottom-0 left-0 h-1 ${
+          type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+        } animate-progress`}
+      />
     </div>
   );
 };
@@ -72,37 +80,45 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
 // Main Login Page Component
 // ────────────────────────────────────────────────
 export default function LoginPage() {
-  const { token: contextToken, setToken, user } = useAuth();
+  const { token: contextToken, setToken } = useAuth(); // user was unused → removed
   const navigate = useNavigate();
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isOTPSent, setIsOTPSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [formData, setFormData] = useState({
+
+  const [formData, setFormData] = useState<{
+    email: string;
+    otp: string[];
+  }>({
     email: "",
     otp: Array(6).fill(""),
   });
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  const otpRefs = useRef<HTMLInputElement[]>([]);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
 
-  // All hooks must come BEFORE any early return
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Countdown timer
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
+
     if (countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     }
+
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  // ── Safe to check token now ────────────────────────────────
+  // Redirect if already logged in
   const storedToken = localStorage.getItem("accessToken") || contextToken;
 
   if (storedToken) {
     return <Navigate to="/home" replace />;
   }
-
-  // ───────────────────────────────────────────────────────────
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type });
@@ -115,7 +131,7 @@ export default function LoginPage() {
   const handleOTPChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
     const newOTP = [...formData.otp];
-    newOTP[index] = value.slice(-1);
+    newOTP[index] = value.slice(-1); // only last character
     setFormData((prev) => ({ ...prev, otp: newOTP }));
 
     if (value && index < 5) {
@@ -123,13 +139,13 @@ export default function LoginPage() {
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !formData.otp[index] && index > 0) {
       otpRefs.current[index - 1]?.focus();
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent) => {
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text").trim();
     if (/^\d{6}$/.test(pasted)) {
@@ -160,12 +176,14 @@ export default function LoginPage() {
 
   const resendOTP = async () => {
     if (countdown > 0) return;
+
     const email = localStorage.getItem("loginEmail");
     if (!email) {
       setIsOTPSent(false);
       showToast("Email not found. Please enter email again.", "error");
       return;
     }
+
     setIsLoading(true);
     try {
       await generateOTP({ identifier: email });
@@ -191,7 +209,7 @@ export default function LoginPage() {
       const email = localStorage.getItem("loginEmail");
       if (!email) {
         showToast("Email not found. Please start over.", "error");
-        throw new Error("Email not found");
+        return;
       }
 
       const res = await otpVerificationLogin({ otp, identifier: email });
@@ -204,8 +222,7 @@ export default function LoginPage() {
       localStorage.removeItem("loginEmail");
 
       showToast("Login successful! Redirecting...", "success");
-      
-      // Delay navigation to avoid race condition / white screen
+
       setTimeout(() => {
         if (res.is_admin || res.role === "admin") {
           navigate("/admin", { replace: true });
@@ -213,13 +230,10 @@ export default function LoginPage() {
           navigate("/home", { replace: true });
         }
       }, 800);
-
     } catch (err: any) {
       showToast(err.message || "Invalid OTP. Please try again.", "error");
       setFormData((prev) => ({ ...prev, otp: Array(6).fill("") }));
-      if (otpRefs.current[0]) {
-        otpRefs.current[0].focus();
-      }
+      otpRefs.current[0]?.focus();
     } finally {
       setIsLoading(false);
     }
@@ -227,8 +241,11 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isOTPSent) verifyOTP();
-    else sendOTP();
+    if (isOTPSent) {
+      verifyOTP();
+    } else {
+      sendOTP();
+    }
   };
 
   const handleGoBack = () => {
@@ -240,7 +257,6 @@ export default function LoginPage() {
 
   return (
     <>
-      {/* Toast Notification */}
       {toast && (
         <Toast
           message={toast.message}
@@ -250,7 +266,7 @@ export default function LoginPage() {
       )}
 
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        {/* Soft magical background orbs */}
+        {/* Background orbs */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute -top-20 -left-20 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-40 animate-blob-slow"></div>
           <div className="absolute top-1/3 -right-20 w-80 h-80 bg-indigo-100 rounded-full blur-3xl opacity-30 animate-blob-slow animation-delay-3000"></div>
@@ -296,7 +312,7 @@ export default function LoginPage() {
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-400/30 to-indigo-400/20 rounded-full blur-2xl"></div>
                 <img
                   src={logo}
-                  alt="MagicLamp"
+                  alt="Logo"
                   className="w-24 h-24 object-contain relative z-10 drop-shadow-xl"
                 />
               </div>
@@ -308,14 +324,12 @@ export default function LoginPage() {
                 Welcome Back
               </h2>
               <p className="mt-3 text-gray-600">
-                {isOTPSent
-                  ? "Enter the OTP sent to your email"
-                  : "Sign in with your email"}
+                {isOTPSent ? "Enter the OTP sent to your email" : "Sign in with your email"}
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Email Input */}
+              {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
@@ -340,7 +354,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* OTP Input Section */}
+              {/* OTP */}
               {isOTPSent && (
                 <div className="space-y-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -350,7 +364,9 @@ export default function LoginPage() {
                     {formData.otp.map((digit, idx) => (
                       <input
                         key={idx}
-                        ref={(el) => (otpRefs.current[idx] = el!)}
+                        ref={(el) => {
+                          otpRefs.current[idx] = el;
+                        }}
                         type="text"
                         inputMode="numeric"
                         maxLength={1}
@@ -381,7 +397,7 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Submit Button */}
+              {/* Submit */}
               <button
                 type="submit"
                 disabled={isLoading || (isOTPSent && formData.otp.join("").length !== 6)}
@@ -390,8 +406,20 @@ export default function LoginPage() {
                 {isLoading ? (
                   <div className="flex items-center justify-center gap-3">
                     <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" className="opacity-25" />
-                      <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" className="opacity-75" />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                        className="opacity-25"
+                      />
+                      <path
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                        className="opacity-75"
+                      />
                     </svg>
                     {isOTPSent ? "Verifying..." : "Sending..."}
                   </div>
@@ -423,7 +451,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Social Login Buttons (placeholders) */}
+            {/* Social buttons (placeholders) */}
             <div className="grid grid-cols-2 gap-4">
               <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
                 <FaGoogle className="text-red-500" />
@@ -435,7 +463,7 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Sign Up Link */}
+            {/* Sign up link */}
             <p className="mt-8 text-center text-gray-600">
               New here?{" "}
               <a href="/signup" className="font-medium text-indigo-600 hover:text-indigo-800">
@@ -444,7 +472,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Security Badge */}
+          {/* Security note */}
           <p className="mt-6 text-center text-sm text-gray-500 flex items-center justify-center gap-2">
             <FaKey className="text-indigo-500" />
             OTP-based • Secure & Fast
