@@ -78,9 +78,9 @@ export default function History() {
     }
   };
 
-  const callCustomer = (phone: string) => {
-    window.location.href = `tel:${phone}`;
-  };
+  // const callCustomer = (phone: string) => {
+  //   window.location.href = `tel:${phone}`;
+  // };
 
   if (loading) {
     return (
