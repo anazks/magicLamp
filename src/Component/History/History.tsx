@@ -6,7 +6,6 @@ import {
   FaCalendar,
   FaUser,
   FaPhone,
-  FaClock,
   FaChevronRight,
   FaExternalLinkAlt,
   FaMapPin,
@@ -16,6 +15,7 @@ import {
   FaSignInAlt,
   FaHistory,
   FaLock,
+  FaInfoCircle,
 } from "react-icons/fa";
 
 interface ServiceHistoryItem {

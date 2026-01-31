@@ -3,11 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { profileDetails, updateProfile } from '../../Api/Auth';
 import {
   FaUser,
-  FaPhone,
-  FaBirthdayCake,
-  FaMapMarkerAlt,
-  FaMapPin,
-  FaHome,
   FaEdit,
   FaSave,
   FaTimes,
