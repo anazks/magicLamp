@@ -1,5 +1,19 @@
 import { useState, useEffect } from "react";
 import { serviceHistory } from "../../Api/Service";
+import { 
+  FaMapMarkerAlt, 
+  FaCalendar, 
+  FaUser, 
+  FaPhone, 
+  FaClock,
+  FaChevronRight,
+  FaExternalLinkAlt,
+  FaInfoCircle,
+  FaMapPin,
+  FaCheckCircle,
+  FaHourglassHalf,
+  FaTimesCircle
+} from "react-icons/fa";
 
 interface ServiceHistoryItem {
   id: number;
@@ -45,7 +59,7 @@ export default function History() {
           mobile_number: item.mobile_number,
           customer_name: item.customer_name,
           category_icon: item.category_icon,
-          amount: "₹---", // ← implement later if needed
+          amount: "₹---",
         }));
         setHistory(transformed);
       } catch (err: any) {
@@ -58,13 +72,43 @@ export default function History() {
     fetchHistory();
   }, []);
 
-  const getStatusStyle = (status: string) => {
+  const getStatusConfig = (status: string) => {
     const s = status.toLowerCase();
-    if (s === "completed") return "bg-green-100 text-green-700";
-    if (s === "accepted")  return "bg-blue-100 text-blue-700";
-    if (s === "pending")   return "bg-yellow-100 text-yellow-700";
-    if (s === "cancelled" || s === "rejected") return "bg-red-100 text-red-700";
-    return "bg-gray-100 text-gray-600";
+    if (s === "completed") return {
+      bg: "bg-gradient-to-r from-emerald-500 to-green-500",
+      text: "text-green-700",
+      icon: <FaCheckCircle className="text-emerald-500" />,
+      badge: "bg-emerald-100 text-emerald-700",
+      glow: "shadow-lg shadow-emerald-500/20"
+    };
+    if (s === "accepted") return {
+      bg: "bg-gradient-to-r from-blue-500 to-cyan-500",
+      text: "text-blue-700",
+      icon: <FaCheckCircle className="text-blue-500" />,
+      badge: "bg-blue-100 text-blue-700",
+      glow: "shadow-lg shadow-blue-500/20"
+    };
+    if (s === "pending") return {
+      bg: "bg-gradient-to-r from-amber-500 to-orange-500",
+      text: "text-amber-700",
+      icon: <FaHourglassHalf className="text-amber-500" />,
+      badge: "bg-amber-100 text-amber-700",
+      glow: "shadow-lg shadow-amber-500/20"
+    };
+    if (s === "cancelled" || s === "rejected") return {
+      bg: "bg-gradient-to-r from-rose-500 to-pink-500",
+      text: "text-rose-700",
+      icon: <FaTimesCircle className="text-rose-500" />,
+      badge: "bg-rose-100 text-rose-700",
+      glow: "shadow-lg shadow-rose-500/20"
+    };
+    return {
+      bg: "bg-gradient-to-r from-gray-500 to-slate-500",
+      text: "text-gray-700",
+      icon: <FaInfoCircle className="text-gray-500" />,
+      badge: "bg-gray-100 text-gray-700",
+      glow: "shadow-lg shadow-gray-500/20"
+    };
   };
 
   const handleViewDetails = (item: ServiceHistoryItem) => setSelectedItem(item);
@@ -78,16 +122,19 @@ export default function History() {
     }
   };
 
-  // const callCustomer = (phone: string) => {
-  //   window.location.href = `tel:${phone}`;
-  // };
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
         <div className="text-center">
-          <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading history...</p>
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
+            <div className="relative w-20 h-20 border-[3px] border-transparent bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-border rounded-full animate-spin">
+              <div className="absolute inset-2 bg-white rounded-full"></div>
+            </div>
+          </div>
+          <p className="text-gray-600 font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Loading your history...
+          </p>
         </div>
       </div>
     );
@@ -95,14 +142,19 @@ export default function History() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="text-center max-w-md">
-          <p className="text-red-600 mb-4 text-lg">{error}</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 p-4">
+        <div className="text-center max-w-md bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-white/40">
+          <div className="w-20 h-20 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-2xl text-white">⚠️</span>
+            </div>
+          </div>
+          <p className="text-gray-800 mb-6 text-lg font-semibold">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold hover:shadow-xl transform hover:scale-105 transition-all duration-300 shadow-lg"
           >
-            Retry
+            Try Again
           </button>
         </div>
       </div>
@@ -110,179 +162,349 @@ export default function History() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 pb-24 px-4">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Service History</h1>
-        <p className="text-gray-600 mb-8">Your past service requests</p>
+        {/* Header Section with Glass Morphism */}
+        <div className="sticky top-0 z-10 pt-6 pb-6 backdrop-blur-sm bg-white/30 rounded-b-3xl">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                Service History
+              </h1>
+              <p className="text-gray-500 mt-1">Track all your service requests</p>
+            </div>
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/40 shadow-sm">
+              <span className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {history.length} {history.length === 1 ? 'Request' : 'Requests'}
+              </span>
+            </div>
+          </div>
+        </div>
 
         {history.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-lg border">
-            <p className="text-6xl mb-4">📪</p>
-            <h2 className="text-xl font-semibold mb-2">No requests yet</h2>
-            <p className="text-gray-500 mb-6">When you book a service, it will appear here.</p>
+          <div className="text-center py-20 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/40 mt-6">
+            <div className="w-32 h-32 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg">
+              <div className="w-24 h-24 bg-gradient-to-br from-blue-200 to-purple-200 rounded-full flex items-center justify-center">
+                <span className="text-6xl bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+                  📭
+                </span>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-3">No requests yet</h2>
+            <p className="text-gray-500 mb-10 max-w-md mx-auto">
+              Your service history will appear here once you book your first service
+            </p>
             <button
               onClick={() => (window.location.href = "/home")}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-10 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold hover:shadow-2xl transform hover:scale-105 transition-all duration-300 shadow-lg group"
             >
-              Find Services
+              <span className="flex items-center gap-2">
+                Book First Service
+                <FaChevronRight className="group-hover:translate-x-1 transition-transform" />
+              </span>
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
-            {history.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white border rounded-lg p-5 hover:border-gray-300 transition-colors"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  {/* Left - Main info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        {item.category_icon ? (
-                          <img src={item.category_icon} alt="" className="w-6 h-6" />
-                        ) : (
-                          <span className="text-gray-500 font-medium">
-                            {item.category_name?.[0] || "?"}
+          <div className="space-y-5 mt-6">
+            {history.map((item, index) => {
+              const statusConfig = getStatusConfig(item.status);
+              
+              return (
+                <div
+                  key={item.id}
+                  className="group relative"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {/* Background Glow Effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500 opacity-0 group-hover:opacity-100" />
+                  
+                  {/* Main Card */}
+                  <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl border border-white/40 shadow-lg hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] overflow-hidden">
+                    {/* Status Indicator Bar */}
+                    <div className={`h-1 ${statusConfig.bg} ${statusConfig.glow}`} />
+                    
+                    <div className="p-5">
+                      {/* Header */}
+                      <div className="flex items-start gap-4 mb-5">
+                        {/* Icon Container */}
+                        <div className="relative">
+                          <div className={`absolute inset-0 ${statusConfig.bg} rounded-2xl blur-md opacity-20`} />
+                          <div className="relative w-16 h-16 bg-gradient-to-br from-gray-50 to-white rounded-2xl flex items-center justify-center shadow-lg border border-white">
+                            {item.category_icon ? (
+                              <img 
+                                src={item.category_icon} 
+                                alt="" 
+                                className="w-8 h-8 object-contain"
+                              />
+                            ) : (
+                              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                                {item.category_name?.[0] || "S"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Service Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h3 className="font-bold text-gray-900 text-lg mb-1 line-clamp-1">
+                                {item.category_name}
+                              </h3>
+                              <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <FaCalendar className="text-blue-500" />
+                                <span>
+                                  {new Date(item.date).toLocaleDateString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })}
+                                </span>
+                                <span className="mx-1">•</span>
+                                <FaClock className="text-purple-500" />
+                                <span>
+                                  {new Date(item.date).toLocaleTimeString("en-IN", {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Status Badge */}
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig.badge} border border-white/40 shadow-sm`}>
+                              {statusConfig.icon}
+                              <span className="text-xs font-bold">{item.status.toUpperCase()}</span>
+                            </div>
+                          </div>
+
+                          {/* Subcategory */}
+                          {item.subcategory_name && (
+                            <div className="mt-3">
+                              <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-full text-xs font-medium border border-blue-100/50">
+                                {item.subcategory_name}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Address Section */}
+                      <div className="mb-5 p-4 bg-gradient-to-r from-blue-50/50 to-purple-50/50 rounded-xl border border-blue-100/30">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <FaMapMarkerAlt className="text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-700 line-clamp-2">
+                              {item.address}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Customer Info */}
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
+                              <FaUser className="text-blue-600 text-sm" />
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">
+                              {item.customer_name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-gradient-to-br from-green-100 to-emerald-100 rounded-lg flex items-center justify-center">
+                              <FaPhone className="text-green-600 text-sm" />
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">
+                              {item.mobile_number}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          ID: {item.request_id}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleViewDetails(item)}
+                          className="flex-1 px-5 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold hover:shadow-xl transform hover:scale-105 transition-all duration-300 shadow-lg group"
+                        >
+                          <span className="flex items-center justify-center gap-2">
+                            View Details
+                            <FaChevronRight className="text-sm group-hover:translate-x-1 transition-transform" />
                           </span>
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {item.category_name}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {new Date(item.date).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </p>
+                        </button>
+                        <button
+                          onClick={() => openMap(item)}
+                          disabled={!item.latitude || !item.longitude}
+                          className={`px-5 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 ${
+                            item.latitude && item.longitude
+                              ? "bg-white text-blue-600 border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-300 hover:shadow-lg transform hover:scale-105"
+                              : "bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-200"
+                          }`}
+                        >
+                          <FaMapPin />
+                          Map
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {item.subcategory_name && (
-                        <span className="text-xs px-2.5 py-1 bg-gray-100 rounded-full">
-                          {item.subcategory_name}
-                        </span>
-                      )}
-                      <span
-                        className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusStyle(
-                          item.status
-                        )}`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
-
-                    <p className="text-sm text-gray-600 mt-3 line-clamp-2">
-                      {item.address}
-                    </p>
-                  </div>
-
-                  {/* Right - Actions */}
-                  <div className="flex gap-2 sm:flex-col sm:items-end">
-                    <button
-                      onClick={() => handleViewDetails(item)}
-                      className="px-4 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
-                    >
-                      Details
-                    </button>
-
-                    {/* {item.status.toLowerCase() === "pending" && (
-                      <button
-                        onClick={() => callCustomer(item.mobile_number)}
-                        className="px-4 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-                      >
-                        Call
-                      </button>
-                    )} */}
-
-                    <button
-                      onClick={() => openMap(item)}
-                      disabled={!item.latitude || !item.longitude}
-                      className={`px-4 py-1.5 text-sm rounded ${
-                        item.latitude && item.longitude
-                          ? "border border-purple-300 text-purple-700 hover:bg-purple-50"
-                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      }`}
-                    >
-                      Map
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Simple Modal */}
+      {/* Enhanced Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Service Details</h2>
-              <button onClick={closeModal} className="text-gray-500 hover:text-gray-800 text-2xl">
-                ×
-              </button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-gradient-to-br from-white via-white to-blue-50/30 backdrop-blur-xl rounded-3xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl border border-white/40 transform animate-slideUp">
+            {/* Modal Header with Gradient */}
+            <div className="relative p-6 bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+              <div className="absolute inset-0 bg-black/10" />
+              <div className="relative flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Service Details</h2>
+                  <p className="text-blue-100/90 text-sm">Request #{selectedItem.request_id}</p>
+                </div>
+                <button
+                  onClick={closeModal}
+                  className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110 hover:rotate-90"
+                >
+                  <span className="text-2xl leading-none">×</span>
+                </button>
+              </div>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div>
-                <div className="text-sm text-gray-500">Service</div>
-                <div className="font-medium">{selectedItem.category_name}</div>
-              </div>
-
-              <div>
-                <div className="text-sm text-gray-500">Status</div>
-                <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusStyle(selectedItem.status)}`}>
-                  {selectedItem.status}
+            {/* Modal Content */}
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {/* Service Card */}
+              <div className="bg-gradient-to-br from-blue-50/50 to-purple-50/50 p-5 rounded-2xl border border-blue-100/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-sm">
+                    {selectedItem.category_icon ? (
+                      <img src={selectedItem.category_icon} alt="" className="w-7 h-7" />
+                    ) : (
+                      <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        {selectedItem.category_name?.[0] || "S"}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-xs text-blue-600 font-semibold mb-1">SERVICE</div>
+                    <div className="font-bold text-gray-900 text-lg">{selectedItem.category_name}</div>
+                    {selectedItem.subcategory_name && (
+                      <div className="text-sm text-gray-600 mt-1">{selectedItem.subcategory_name}</div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <div className="text-sm text-gray-500">Date</div>
-                <div>{new Date(selectedItem.date).toLocaleString("en-IN")}</div>
+              {/* Status & Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-gray-50 to-white p-4 rounded-2xl border border-gray-100">
+                  <div className="text-xs text-gray-500 font-semibold mb-3">STATUS</div>
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${getStatusConfig(selectedItem.status).badge} border border-white/40`}>
+                    {getStatusConfig(selectedItem.status).icon}
+                    <span className="font-bold text-sm">{selectedItem.status.toUpperCase()}</span>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-gray-50 to-white p-4 rounded-2xl border border-gray-100">
+                  <div className="text-xs text-gray-500 font-semibold mb-3">DATE & TIME</div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                      <FaCalendar className="text-blue-500" />
+                      {new Date(selectedItem.date).toLocaleDateString("en-IN", {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+                      <FaClock className="text-purple-500" />
+                      {new Date(selectedItem.date).toLocaleTimeString("en-IN", {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <div className="text-sm text-gray-500">Customer</div>
-                <div>{selectedItem.customer_name} • {selectedItem.mobile_number}</div>
+              {/* Customer Info */}
+              <div className="bg-gradient-to-br from-gray-50 to-white p-5 rounded-2xl border border-gray-100">
+                <div className="text-xs text-gray-500 font-semibold mb-3">CUSTOMER DETAILS</div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center">
+                      <FaUser className="text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-800">{selectedItem.customer_name}</div>
+                      <div className="text-sm text-gray-500">Customer Name</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-emerald-50 rounded-xl flex items-center justify-center">
+                      <FaPhone className="text-green-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-800">{selectedItem.mobile_number}</div>
+                      <div className="text-sm text-gray-500">Contact Number</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <div className="text-sm text-gray-500">Address</div>
-                <div className="text-gray-700">{selectedItem.address}</div>
+              {/* Address */}
+              <div className="bg-gradient-to-br from-gray-50 to-white p-5 rounded-2xl border border-gray-100">
+                <div className="text-xs text-gray-500 font-semibold mb-3">SERVICE ADDRESS</div>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <FaMapPin className="text-blue-600" />
+                  </div>
+                  <div className="text-sm text-gray-700 leading-relaxed">{selectedItem.address}</div>
+                </div>
               </div>
 
+              {/* Description */}
               {selectedItem.description && (
-                <div>
-                  <div className="text-sm text-gray-500">Description</div>
-                  <div className="text-gray-700 mt-1">{selectedItem.description}</div>
+                <div className="bg-gradient-to-br from-gray-50 to-white p-5 rounded-2xl border border-gray-100">
+                  <div className="text-xs text-gray-500 font-semibold mb-3">DESCRIPTION</div>
+                  <div className="text-sm text-gray-700 leading-relaxed">{selectedItem.description}</div>
                 </div>
               )}
             </div>
 
-            <div className="p-5 border-t flex justify-end gap-3">
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-gray-100/50 flex gap-3">
               <button
                 onClick={() => {
                   openMap(selectedItem);
                   closeModal();
                 }}
                 disabled={!selectedItem.latitude || !selectedItem.longitude}
-                className={`px-5 py-2 rounded ${
+                className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
                   selectedItem.latitude && selectedItem.longitude
-                    ? "bg-purple-600 text-white hover:bg-purple-700"
-                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:shadow-xl transform hover:scale-105 shadow-lg"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
               >
+                <FaExternalLinkAlt />
                 Open Map
               </button>
               <button
                 onClick={closeModal}
-                className="px-5 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                className="px-8 py-3 bg-gradient-to-br from-gray-100 to-gray-50 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-300 border border-gray-200"
               >
                 Close
               </button>
@@ -290,6 +512,36 @@ export default function History() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(40px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+
+        .animate-slideUp {
+          animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+      `}</style>
     </div>
   );
 }
