@@ -15,7 +15,6 @@ import {
   FaHourglassHalf,
   FaTimesCircle,
   FaSignInAlt,
-  FaLock,
   FaHistory,
 } from "react-icons/fa";
 
