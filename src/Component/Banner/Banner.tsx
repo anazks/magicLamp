@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import bannerImage from '../../assets/logo.png'
 import BusinessDetails from './BusinessDetails'
+import Footer from '../Footer/Footer'
+
 
 export default function Banner() {
   const [isVisible, setIsVisible] = useState(false)
@@ -9,8 +11,11 @@ export default function Banner() {
   const containerRef = useRef<HTMLDivElement>(null)
   const aboutSectionRef = useRef<HTMLDivElement>(null) // ← ref for BusinessDetails
   const navigate = useNavigate()
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
+    let token = localStorage.getItem('token')
+    setToken(token)
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -76,6 +81,8 @@ export default function Banner() {
                 About
               </button>
 
+{
+  token ? null : (
               <button
                 onClick={handleLogin}
                 className="
@@ -88,7 +95,7 @@ export default function Banner() {
               >
                 Login
               </button>
-
+)}
               <button
                 onClick={handleGetStarted}
                 className="
@@ -135,23 +142,25 @@ export default function Banner() {
                   About
                 </button>
 
-                <button
-                  onClick={handleLogin}
-                  className="
-                    py-3 px-6
-                    text-slate-700 font-medium 
-                    border border-slate-300 rounded-lg
-                    hover:bg-slate-50
-                    transition-all
-                  "
-                >
-                  Login
-                </button>
-
-                <button
-                  onClick={handleGetStarted}
-                  className="
-                    py-3 px-6
+{
+  token ? null : (
+              <button
+                onClick={handleLogin}
+                className="
+                  px-6 py-2 
+                  text-slate-700 font-medium 
+                  border border-slate-300 rounded-lg
+                  hover:bg-slate-50 hover:border-slate-400
+                  transition-all duration-200
+                "
+              >
+                Login
+              </button>
+)}
+              <button
+                onClick={handleGetStarted}
+                className="
+                  px-8 py-2.5
                     bg-gradient-to-r from-blue-600 to-amber-500
                     text-white font-semibold
                     rounded-lg shadow-md
@@ -214,7 +223,7 @@ export default function Banner() {
                     animate-gradient-flow
                   "
                 >
-                  Magic Lamp
+                   𝓜𝓪𝓰𝓲𝓬 𝓛𝓪𝓶𝓹
                 </h1>
               </div>
 
@@ -339,6 +348,7 @@ export default function Banner() {
       <div ref={aboutSectionRef}>
         <BusinessDetails />
       </div>
+    <Footer/>
     </>
   )
 }

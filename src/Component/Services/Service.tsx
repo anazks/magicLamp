@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { listServices, makeRequest } from "../../Api/Service";
-
+import Loader from "../Loader/Loader";
 // ────────────────────────────────────────────────
 // Interfaces (unchanged)
 // ────────────────────────────────────────────────
@@ -469,15 +469,7 @@ export default function Service() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative">
-            <div className="absolute inset-0 bg-blue-200 rounded-full blur-xl opacity-30"></div>
-            <div className="relative animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          </div>
-          <p className="text-blue-700 font-medium">Loading services...</p>
-        </div>
-      </div>
+     <Loader/>
     );
   }
 
