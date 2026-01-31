@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef } from "react";
-import { FaEnvelope, FaKey, FaGoogle, FaCheckCircle, FaTimes } from "react-icons/fa";
-import { useNavigate, Navigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { FaEnvelope, FaGoogle, FaCheckCircle, FaTimes } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import logo from '../assets/logo.png';
 import { generateOTP, otpVerificationLogin } from '../Api/Auth';
-import { useAuth } from "../Context/userContext";
 
 // ────────────────────────────────────────────────
-// Custom Toast Component (kept mostly same, just lighter)
+// Custom Toast Component
 // ────────────────────────────────────────────────
 interface ToastProps {
   message: string;
@@ -57,10 +56,9 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
 };
 
 // ────────────────────────────────────────────────
-// Main Login Page – Redesigned
+// Main Login Page – No token check
 // ────────────────────────────────────────────────
 export default function LoginPage() {
-  const { token: contextToken, setToken } = useAuth();
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -88,11 +86,6 @@ export default function LoginPage() {
       return () => clearTimeout(timer);
     }
   }, [countdown]);
-
-  const storedToken = localStorage.getItem("accessToken") || contextToken;
-  if (storedToken) {
-    return <Navigate to="/home" replace />;
-  }
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type });
@@ -183,14 +176,15 @@ export default function LoginPage() {
 
       const res = await otpVerificationLogin({ otp, identifier: email });
 
-      setToken(res.access);
-      // localStorage.setItem("accessToken", res.access);
-      // if (res.refresh) localStorage.setItem("refreshToken", res.refresh);
+      // Store the token(s) — adjust according to your auth system
+      localStorage.setItem("accessToken", res.access);
+      if (res.refresh) localStorage.setItem("refreshToken", res.refresh);
       localStorage.removeItem("loginEmail");
 
       showToast("Login successful!", "success");
 
       setTimeout(() => {
+        // Redirect based on role/admin status
         if (res.is_admin || res.role === "admin") {
           navigate("/admin", { replace: true });
         } else {
@@ -349,7 +343,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Google Button – centered, full width */}
+            {/* Google Button */}
             <div className="flex justify-center">
               <button className="flex items-center justify-center gap-3 w-full max-w-xs py-3.5 border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors font-medium text-gray-700">
                 <FaGoogle className="text-red-500 text-xl" />
@@ -368,7 +362,7 @@ export default function LoginPage() {
 
           {/* Security hint */}
           <p className="mt-8 text-center text-sm text-gray-500 flex items-center justify-center gap-2">
-            <FaKey className="text-indigo-500" />
+            <FaEnvelope className="text-indigo-500" />
             Passwordless • Secure OTP login
           </p>
         </div>
