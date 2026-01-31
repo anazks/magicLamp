@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { serviceHistory } from "../../Api/Service";
 import {
   FaMapMarkerAlt,
@@ -13,6 +14,9 @@ import {
   FaCheckCircle,
   FaHourglassHalf,
   FaTimesCircle,
+  FaSignInAlt,
+  FaLock,
+  FaHistory,
 } from "react-icons/fa";
 
 interface ServiceHistoryItem {
@@ -38,9 +42,23 @@ export default function History() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<ServiceHistoryItem | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setIsGuest(true);
+        setLoading(false);
+        return false;
+      }
+      return true;
+    };
+
     const fetchHistory = async () => {
+      if (!checkAuth()) return;
+
       try {
         setLoading(true);
         const data = await serviceHistory();
@@ -72,6 +90,10 @@ export default function History() {
     fetchHistory();
   }, []);
 
+  const handleLoginRedirect = () => {
+    navigate("/login");
+  };
+
   const getStatusConfig = (status: string) => {
     const s = status.toLowerCase();
     if (s === "completed") return { bg: "from-emerald-500 to-green-500", text: "text-green-700", icon: <FaCheckCircle className="text-emerald-500" />, badge: "bg-emerald-100 text-emerald-700", glow: "shadow-lg shadow-emerald-500/20" };
@@ -91,6 +113,113 @@ export default function History() {
       window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank");
     }
   };
+
+  // Guest User View
+  if (isGuest) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 p-4">
+        <div className="text-center max-w-md w-full">
+          {/* Floating Animation Container */}
+          <div className="relative mb-8">
+            {/* Outer glow */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-2xl opacity-20 animate-pulse" />
+            
+            {/* Logo animation */}
+            <div className="relative mx-auto w-40 h-40 mb-6">
+              {/* Animated lock icon */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="relative">
+                  {/* Lock body */}
+                  <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-500">
+                    <Flock className="text-white text-4xl" />
+                  </div>
+                  
+                  {/* Pulsing ring */}
+                  <div className="absolute -inset-4 border-4 border-blue-400/30 rounded-3xl animate-ping" />
+                  
+                  {/* Floating particles */}
+                  {[...Array(8)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`absolute w-2 h-2 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-float opacity-70`}
+                      style={{
+                        top: `${Math.random() * 100}%`,
+                        left: `${Math.random() * 100}%`,
+                        animationDelay: `${i * 0.2}s`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              {/* Rotating circles */}
+              <div className="absolute inset-0 border-4 border-blue-300/20 rounded-full animate-spin-slow"></div>
+              <div className="absolute inset-8 border-4 border-purple-300/20 rounded-full animate-spin-slow-reverse"></div>
+            </div>
+
+            {/* Text content */}
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-3">
+              Welcome Guest!
+            </h1>
+            <p className="text-gray-600 text-lg mb-2">
+              You're viewing as a guest user
+            </p>
+            <p className="text-gray-500 mb-8">
+              Login to track your service history and access all features
+            </p>
+
+            {/* Features list */}
+            <div className="space-y-3 mb-8 text-left bg-white/50 backdrop-blur-sm rounded-2xl p-6 border border-white/40 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center">
+                  <FaHistory className="text-blue-500" />
+                </div>
+                <span className="text-gray-700">Track service history</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-100 to-purple-50 rounded-lg flex items-center justify-center">
+                  <FaCalendar className="text-purple-500" />
+                </div>
+                <span className="text-gray-700">Manage appointments</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-green-100 to-green-50 rounded-lg flex items-center justify-center">
+                  <FaUser className="text-green-500" />
+                </div>
+                <span className="text-gray-700">Personalized profile</span>
+              </div>
+            </div>
+
+            {/* Login button */}
+            <button
+              onClick={handleLoginRedirect}
+              className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold hover:shadow-2xl hover:scale-105 transition-all duration-300 shadow-lg group relative overflow-hidden"
+            >
+              {/* Button shine effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              
+              <span className="flex items-center justify-center gap-3 relative">
+                <FaSignInAlt className="text-xl group-hover:translate-x-1 transition-transform" />
+                Login to Continue
+                <FaChevronRight className="text-sm group-hover:translate-x-1 transition-transform" />
+              </span>
+            </button>
+
+            {/* Optional: Register link */}
+            <p className="mt-6 text-gray-500">
+              Don't have an account?{' '}
+              <button
+                onClick={() => navigate("/register")}
+                className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
+              >
+                Create one now
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -233,7 +362,6 @@ export default function History() {
                         </div>
                       </div>
 
-                      {/* Address, Customer info, Buttons – same as before */}
                       <div className="mb-5 p-4 bg-gradient-to-r from-blue-50/50 to-purple-50/50 rounded-xl border border-blue-100/30">
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
@@ -295,7 +423,6 @@ export default function History() {
         )}
       </div>
 
-      {/* Modal – using Tailwind animate-[...] */}
       {selectedItem && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade">
           <div className="bg-gradient-to-br from-white via-white to-blue-50/30 backdrop-blur-xl rounded-3xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl border border-white/40 transform animate-[slide-up_0.4s_cubic-bezier(0.175,0.885,0.32,1.275)]">
@@ -316,8 +443,7 @@ export default function History() {
             </div>
 
             <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-200px)]">
-              {/* Keep your modal content the same – just remove animate classes if any */}
-              {/* ... your existing modal cards ... */}
+              {/* Modal content remains same */}
             </div>
 
             <div className="p-6 border-t border-gray-100/50 flex gap-3">
@@ -343,6 +469,44 @@ export default function History() {
           </div>
         </div>
       )}
+
+      {/* Add CSS animations to your global CSS */}
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0) translateX(0); opacity: 0.7; }
+          50% { transform: translateY(-15px) translateX(5px); opacity: 1; }
+        }
+        @keyframes spin-slow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes spin-slow-reverse {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(-360deg); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-spin-slow { animation: spin-slow 8s linear infinite; }
+        .animate-spin-slow-reverse { animation: spin-slow-reverse 10s linear infinite; }
+        .animate-fade {
+          animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
+
+// Custom Lock Icon Component
+const Flock = ({ className }: { className?: string }) => (
+  <svg 
+    className={className} 
+    fill="currentColor" 
+    viewBox="0 0 24 24" 
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M12 17a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2zm6-9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h1V6a5 5 0 0 1 10 0v2h1zm-6-5a3 3 0 0 0-3 3v2h6V6a3 3 0 0 0-3-3z" />
+  </svg>
+);

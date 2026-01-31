@@ -28,7 +28,7 @@ export default function Banner() {
   }, [])
 
   const handleGetStarted = () => {
-    navigate('/login')
+    navigate('/home')
   }
 
   return (
