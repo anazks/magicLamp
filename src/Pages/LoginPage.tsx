@@ -184,8 +184,8 @@ export default function LoginPage() {
       const res = await otpVerificationLogin({ otp, identifier: email });
 
       setToken(res.access);
-      localStorage.setItem("accessToken", res.access);
-      if (res.refresh) localStorage.setItem("refreshToken", res.refresh);
+      // localStorage.setItem("accessToken", res.access);
+      // if (res.refresh) localStorage.setItem("refreshToken", res.refresh);
       localStorage.removeItem("loginEmail");
 
       showToast("Login successful!", "success");
