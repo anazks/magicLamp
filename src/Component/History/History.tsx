@@ -142,13 +142,13 @@ export default function History() {
             </div>
           </div>
 
-          <button
+          {/* <button
             onClick={() => navigate("/login")}
             className="w-full py-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition mb-4 flex items-center justify-center gap-3 shadow-md"
           >
             <FaSignInAlt />
-            Login Now
-          </button>
+            Login Now */}
+          {/* </button> */}
 
           <p className="text-gray-600">
             Don't have an account?{" "}

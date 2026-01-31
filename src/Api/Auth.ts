@@ -85,3 +85,27 @@ export const updateProfile = async (data: any) => {
     throw error;
   }
 };
+
+export const googleAuth = async (data: any) => {
+        try {
+                let dataObj = {
+                    token: data
+                }
+            console.log("google id",dataObj);
+            const response = await Axios.post('/home/auth/google/', dataObj);
+            console.log("Google auth response------------------",response);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+}
+
+export const googleCallBack = async () => {
+        try {
+            const response = await Axios.get('/home/auth/google/callback/');
+            return response.data;
+        }
+        catch (error) {
+            throw error;
+        }
+}

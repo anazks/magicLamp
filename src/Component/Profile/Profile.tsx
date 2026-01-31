@@ -106,7 +106,9 @@ export default function Profile() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    navigate('/login');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('accessToken');
+    navigate('/');
   };
 
   if (isGuest) {

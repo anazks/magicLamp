@@ -28,7 +28,7 @@ export default function BusinessDetails() {
     {
       title: "Food Delivery",
       icon: (
-        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h18v2a2 2 0 01-2 2H5a2 2 0 01-2-2V3zM3 7h18v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6" />
         </svg>
@@ -38,7 +38,7 @@ export default function BusinessDetails() {
     {
       title: "Grocery Delivery",
       icon: (
-        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-3-4H7L4 7m16 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2V7m16 0H4" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 11v6" />
         </svg>
@@ -48,7 +48,7 @@ export default function BusinessDetails() {
     {
       title: "Medicine Delivery",
       icon: (
-        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4" />
         </svg>
@@ -58,7 +58,7 @@ export default function BusinessDetails() {
     {
       title: "Fish & Meat Delivery",
       icon: (
-        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.5v15m7.5-7.5h-15" />
         </svg>
       ),
@@ -67,7 +67,7 @@ export default function BusinessDetails() {
     {
       title: "Courier & Parcel",
       icon: (
-        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
       ),
@@ -76,7 +76,7 @@ export default function BusinessDetails() {
     {
       title: "Taxi & Transportation",
       icon: (
-        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       ),
@@ -85,7 +85,7 @@ export default function BusinessDetails() {
     {
       title: "Home Services",
       icon: (
-        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
       ),
@@ -104,33 +104,44 @@ export default function BusinessDetails() {
   return (
     <div
       ref={containerRef}
-      className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans"
+      className="relative min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/40 to-indigo-50/30 py-16 px-4 sm:px-6 lg:px-8 font-poppins overflow-hidden"
     >
-      <div className="max-w-7xl mx-auto">
-        {/* Header / Hero */}
-        <div className={`text-center transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+      {/* Subtle background pattern - matching banner */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `linear-gradient(90deg, transparent 79px, #2563eb20 79px, #2563eb20 81px, transparent 81px)`,
+            backgroundSize: '100px 100%'
+          }}
+        />
+      </div>
+
+      <div className="relative max-w-7xl mx-auto">
+        {/* Header */}
+        <div className={`text-center transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
           <img
             src={bannerImage}
             alt="MagicLamp Logo"
-            className="h-24 sm:h-32 mx-auto mb-6"
+            className="h-28 sm:h-36 mx-auto mb-6 drop-shadow-xl"
           />
-          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-3">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl font-black font-cinzel mb-4 magic-lamp-gradient animate-gradient-flow">
             MagicLamp
           </h1>
-          <p className="text-xl text-gray-600 font-medium mb-6">
+          <p className="text-2xl font-semibold text-slate-700 mb-6 tracking-wide">
             InstaServe Solutions Pvt. Ltd.
           </p>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-slate-600 max-w-4xl mx-auto leading-relaxed">
             Connecting people with trusted local businesses, professionals and delivery services — fast, reliable and affordable.
           </p>
         </div>
 
         {/* Services */}
-        <section className="mt-16 sm:mt-20">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center text-gray-900 mb-4">
+        <section className="mt-20 sm:mt-28">
+          <h2 className="text-4xl sm:text-5xl font-bold font-cinzel text-center text-slate-800 mb-4 magic-lamp-gradient">
             Our Services
           </h2>
-          <p className="text-center text-gray-600 mb-10 sm:mb-12">
+          <p className="text-center text-slate-600 text-xl mb-12">
             Everything you need — delivered with care
           </p>
 
@@ -138,15 +149,17 @@ export default function BusinessDetails() {
             {services.map((service, idx) => (
               <div
                 key={idx}
-                className="bg-white rounded-xl shadow hover:shadow-lg transition-shadow duration-300 border border-gray-200 p-6 flex flex-col items-center text-center"
+                className={`bg-white/80 backdrop-blur-sm rounded-2xl border border-blue-100/50 
+                           hover:border-blue-300 hover:shadow-xl transition-all duration-300 p-8 
+                           flex flex-col items-center text-center group`}
               >
-                <div className="text-blue-600 mb-4">
+                <div className="text-blue-600 mb-6 transform group-hover:scale-110 transition-transform duration-300">
                   {service.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-3">
+                <h3 className="text-2xl font-bold text-slate-800 mb-4 group-hover:text-blue-700 transition-colors">
                   {service.title}
                 </h3>
-                <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+                <p className="text-slate-600 leading-relaxed">
                   {service.desc}
                 </p>
               </div>
@@ -155,26 +168,27 @@ export default function BusinessDetails() {
         </section>
 
         {/* About */}
-        <section className="mt-20 pt-12 border-t border-gray-200">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center text-gray-900 mb-8">
+        <section className="mt-24 pt-16 border-t border-blue-100/40">
+          <h2 className="text-4xl sm:text-5xl font-bold font-cinzel text-center text-slate-800 mb-10 magic-lamp-gradient">
             About Us
           </h2>
-          <div className="max-w-4xl mx-auto text-center text-gray-700 text-lg leading-relaxed space-y-6">
+          <div className="max-w-4xl mx-auto text-center text-slate-700 text-xl leading-relaxed space-y-8">
             <p>
-              MagicLamp is a technology platform that connects customers with reliable local vendors, service professionals and delivery partners — making everyday life simpler and more convenient.
+              MagicLamp is a technology platform that connects customers with reliable local vendors, service professionals 
+              and delivery partners — making everyday life simpler and more convenient.
             </p>
-            <p className="font-semibold text-gray-800 text-xl">
+            <p className="font-extrabold text-3xl text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-amber-500">
               Anything. Anywhere. Anytime.
             </p>
           </div>
         </section>
 
         {/* FAQ */}
-        <section className="mt-20 pt-12 border-t border-gray-200">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center text-gray-900 mb-4">
+        <section className="mt-24 pt-16 border-t border-blue-100/40">
+          <h2 className="text-4xl sm:text-5xl font-bold font-cinzel text-center text-slate-800 mb-4 magic-lamp-gradient">
             Frequently Asked Questions
           </h2>
-          <p className="text-center text-gray-600 mb-10">
+          <p className="text-center text-slate-600 text-xl mb-12">
             Quick answers to common questions
           </p>
 
@@ -182,21 +196,21 @@ export default function BusinessDetails() {
             {faqs.map((faq, idx) => (
               <div
                 key={idx}
-                className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+                className="bg-white/80 backdrop-blur-sm border border-blue-100/50 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
               >
                 <button
                   onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
-                  className="w-full px-6 py-5 text-left flex justify-between items-center hover:bg-gray-50 transition-colors"
+                  className="w-full px-8 py-6 text-left flex justify-between items-center hover:bg-blue-50/30 transition-colors"
                 >
-                  <span className="font-medium text-gray-800 text-lg">
+                  <span className="font-semibold text-slate-800 text-xl">
                     {faq.q}
                   </span>
-                  <span className={`text-gray-500 transition-transform ${expandedFaq === idx ? 'rotate-180' : ''}`}>
+                  <span className={`text-blue-600 text-2xl transition-transform duration-300 ${expandedFaq === idx ? 'rotate-180' : ''}`}>
                     ▼
                   </span>
                 </button>
 
-                <div className={`px-6 pb-5 text-gray-600 ${expandedFaq === idx ? 'block' : 'hidden'}`}>
+                <div className={`px-8 pb-6 text-slate-600 text-lg ${expandedFaq === idx ? 'block' : 'hidden'}`}>
                   {faq.a}
                 </div>
               </div>
@@ -205,37 +219,39 @@ export default function BusinessDetails() {
         </section>
 
         {/* Contact */}
-        <section className="mt-20 pt-12 border-t border-gray-200">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center text-gray-900 mb-8">
+        <section className="mt-24 pt-16 border-t border-blue-100/40 pb-20">
+          <h2 className="text-4xl sm:text-5xl font-bold font-cinzel text-center text-slate-800 mb-10 magic-lamp-gradient">
             Get In Touch
           </h2>
 
-          <div className="max-w-xl mx-auto bg-white rounded-xl shadow border border-gray-200 p-8 sm:p-10 text-center">
-            <p className="text-xl font-semibold text-gray-800 mb-6">
+          <div className="max-w-2xl mx-auto bg-white/90 backdrop-blur-md rounded-3xl border border-blue-100/50 p-10 sm:p-12 text-center shadow-xl">
+            <p className="text-2xl font-bold text-slate-800 mb-8">
               MagicLamp InstaServe Solutions Pvt. Ltd.
             </p>
 
-            <div className="space-y-6">
+            <div className="space-y-8 text-xl">
               <div>
                 <a
                   href="mailto:magiclampinstaserve@gmail.com"
-                  className="text-blue-700 hover:underline text-lg flex items-center justify-center gap-3"
+                  className="text-blue-700 hover:text-blue-800 font-semibold flex items-center justify-center gap-4 transition-colors"
                 >
-                  ✉️ magiclampinstaserve@gmail.com
+                  {/* <span className="text-3xl">✉️</span> */}
+                  magiclampinstaserve@gmail.com
                 </a>
               </div>
 
               <div>
                 <a
                   href="tel:+919496343734"
-                  className="text-blue-700 hover:underline text-lg flex items-center justify-center gap-3"
+                  className="text-blue-700 hover:text-blue-800 font-semibold flex items-center justify-center gap-4 transition-colors"
                 >
-                  📞 +91 94963 43734
+                  <span className="text-3xl">📞</span>
+                  +91 94963 43734
                 </a>
               </div>
 
-              <div className="pt-4">
-                <div className="inline-block bg-blue-600 text-white px-8 py-4 rounded-lg font-medium">
+              <div className="pt-6">
+                <div className="inline-block bg-gradient-to-r from-blue-600 to-amber-500 text-white px-10 py-5 rounded-2xl font-bold text-xl shadow-lg">
                   24 × 7 Customer Support
                 </div>
               </div>
@@ -243,6 +259,37 @@ export default function BusinessDetails() {
           </div>
         </section>
       </div>
+
+      {/* Gradient text animation - same as banner */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        .magic-lamp-gradient {
+          background: linear-gradient(
+            135deg, 
+            #1e40af 0%, 
+            #2563eb 25%, 
+            #3b82f6 40%, 
+            #f59e0b 60%, 
+            #fbbf24 75%, 
+            #d97706 100%
+          );
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          background-size: 300% 100%;
+        }
+
+        .animate-gradient-flow {
+          animation: gradientFlow 10s ease-in-out infinite;
+        }
+
+        @keyframes gradientFlow {
+          0%   { background-position: 0% 50%; }
+          50%  { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}</style>
     </div>
   );
 }

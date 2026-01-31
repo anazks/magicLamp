@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
-import { FaEnvelope, FaGoogle, FaCheckCircle, FaTimes } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { FaEnvelope, FaKey, FaGoogle, FaCheckCircle, FaTimes } from "react-icons/fa";
+import { useNavigate, Navigate } from "react-router-dom";
 import logo from '../assets/logo.png';
 import { generateOTP, otpVerificationLogin } from '../Api/Auth';
+import { useAuth } from "../Context/userContext";
+import GoogleAuth from "./GoogleAuth";
 
 // ────────────────────────────────────────────────
-// Custom Toast Component
+// Custom Toast Component (unchanged)
 // ────────────────────────────────────────────────
 interface ToastProps {
   message: string;
@@ -56,9 +58,10 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
 };
 
 // ────────────────────────────────────────────────
-// Main Login Page – No token check
+// Main Login Page
 // ────────────────────────────────────────────────
 export default function LoginPage() {
+  const { token: contextToken, setToken } = useAuth();
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -79,6 +82,30 @@ export default function LoginPage() {
   } | null>(null);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // ─── Check localStorage & clear inconsistent state ───────────────────────
+  useEffect(() => {
+    const accessToken = localStorage.getItem("accessToken");
+    const refreshToken = localStorage.getItem("refreshToken");
+
+    // If tokens exist anywhere → redirect
+    // if (accessToken || contextToken) {
+    //   // Optional: you could also check if it's admin here
+    //   navigate("/home", { replace: true });
+    //   return;
+    // }
+
+    // If NO tokens in localStorage → make sure context is also cleared
+    if (!accessToken && !refreshToken) {
+      setToken(null);                    // clear auth context
+      localStorage.removeItem("loginEmail"); // clean any leftover login state
+      setIsOTPSent(false);               // reset OTP flow
+      setFormData({
+        email: "",
+        otp: Array(6).fill(""),
+      });
+    }
+  }, [contextToken, setToken, navigate]);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -176,7 +203,7 @@ export default function LoginPage() {
 
       const res = await otpVerificationLogin({ otp, identifier: email });
 
-      // Store the token(s) — adjust according to your auth system
+      setToken(res.access);
       localStorage.setItem("accessToken", res.access);
       if (res.refresh) localStorage.setItem("refreshToken", res.refresh);
       localStorage.removeItem("loginEmail");
@@ -184,7 +211,6 @@ export default function LoginPage() {
       showToast("Login successful!", "success");
 
       setTimeout(() => {
-        // Redirect based on role/admin status
         if (res.is_admin || res.role === "admin") {
           navigate("/admin", { replace: true });
         } else {
@@ -211,6 +237,12 @@ export default function LoginPage() {
     localStorage.removeItem("loginEmail");
     setFormData({ email: "", otp: Array(6).fill("") });
   };
+
+  // If we still have token after cleanup → redirect
+  const storedToken = localStorage.getItem("accessToken") || contextToken;
+  if (storedToken) {
+    return <Navigate to="/home" replace />;
+  }
 
   return (
     <>
@@ -344,12 +376,13 @@ export default function LoginPage() {
             </div>
 
             {/* Google Button */}
-            <div className="flex justify-center">
+            {/* <div className="flex justify-center">
               <button className="flex items-center justify-center gap-3 w-full max-w-xs py-3.5 border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors font-medium text-gray-700">
                 <FaGoogle className="text-red-500 text-xl" />
                 Continue with Google
               </button>
-            </div>
+            </div> */}
+            <GoogleAuth/>
 
             {/* Sign up link */}
             <p className="mt-10 text-center text-gray-600">
@@ -362,7 +395,7 @@ export default function LoginPage() {
 
           {/* Security hint */}
           <p className="mt-8 text-center text-sm text-gray-500 flex items-center justify-center gap-2">
-            <FaEnvelope className="text-indigo-500" />
+            <FaKey className="text-indigo-500" />
             Passwordless • Secure OTP login
           </p>
         </div>
