@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { FaEnvelope, FaKey, FaGoogle, FaCheckCircle, FaTimes } from "react-icons/fa";
+import { FaEnvelope, FaKey, FaCheckCircle, FaTimes } from "react-icons/fa";
 import { useNavigate, Navigate } from "react-router-dom";
 import logo from '../assets/logo.png';
 import { generateOTP, otpVerificationLogin } from '../Api/Auth';

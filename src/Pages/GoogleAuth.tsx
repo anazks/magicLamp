@@ -7,7 +7,7 @@ export default function GoogleAuth() {
   const { setToken } = useAuth();
   const navigate = useNavigate();
 
-  const handleSuccess = async (credentialResponse) => {
+  const handleSuccess = async (credentialResponse: any) => {
     try {
       // ✅ Google ID Token (JWT)
       const googleIdToken = credentialResponse.credential;
@@ -30,9 +30,9 @@ export default function GoogleAuth() {
       navigate('/home');
 
     } catch (error) {
-      console.error(
+      console.log(
         'Google login failed:',
-        error.response?.data || error.message
+        error
       );
     }
   };

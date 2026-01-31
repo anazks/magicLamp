@@ -12,7 +12,6 @@ import {
   FaCheckCircle,
   FaHourglassHalf,
   FaTimesCircle,
-  FaSignInAlt,
   FaHistory,
   FaLock,
   FaInfoCircle,
