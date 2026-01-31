@@ -29,7 +29,9 @@ interface BookingFormData {
   customer_name: string;
   category: number | null;
   subcategory: number | null;
-  service_details: { description: string };
+  service_details: {
+    description: string;
+  };
   address: string;
   latitude: string;
   longitude: string;
@@ -55,29 +57,19 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
   }, [onClose]);
 
   return (
-    <div className={`fixed top-6 right-6 z-50 min-w-[320px] border rounded-xl shadow-xl p-4 ${bgColor} animate-fadeInUp`}>
-      <div className="flex items-start gap-3">
-        <div className={`flex-shrink-0 mt-0.5 ${iconColor}`}>
-          {type === 'success' ? (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          )}
-        </div>
-        <div className="flex-1">
-          <p className={`text-base font-medium ${textColor}`}>{message}</p>
-        </div>
-        <button onClick={onClose} className={`text-${type === 'success' ? 'green' : 'red'}-600 hover:opacity-70`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] animate-slide-down">
+      <div className={`flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-lg border backdrop-blur-sm ${bgColor}`}>
+        {type === 'success' ? (
+          <svg className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
-        </button>
+        ) : (
+          <svg className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+        )}
+        <p className={`font-medium text-sm sm:text-base ${textColor}`}>{message}</p>
       </div>
-      <div className={`absolute bottom-0 left-0 h-1 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-progress`}></div>
     </div>
   );
 };
@@ -95,53 +87,66 @@ function SubcategoryModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4" onClick={onClose}>
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md sm:max-w-3xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 flex justify-between items-center z-10">
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[9999]"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white w-full sm:max-w-2xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 flex justify-between items-center sticky top-0 z-10">
           <div>
-            <h2 className="text-lg sm:text-xl font-bold text-white">Select Service</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-white">Select Service</h2>
             <p className="text-blue-100 text-sm sm:text-base mt-1">{category.name}</p>
           </div>
-          <button onClick={onClose} className="text-white hover:text-blue-100 p-1">
-            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white transition p-2"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            {category.subcategories.map((sub) => (
-              <button
-                key={sub.id}
-                onClick={() => onSelect(sub)}
-                className="group bg-white/90 backdrop-blur-sm border border-blue-100 rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all duration-300"
-              >
-                <div className="aspect-square relative">
-                  {sub.image ? (
-                    <img 
-                      src={sub.image} 
-                      alt={sub.name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                      <span className="text-3xl sm:text-4xl font-bold text-blue-300">
-                        {sub.name.charAt(0)}
-                      </span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-blue-900/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </div>
-                <div className="p-3 sm:p-4 text-center">
-                  <h4 className="font-semibold text-slate-800 group-hover:text-blue-700 text-sm sm:text-base truncate">{sub.name}</h4>
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
+          {category.subcategories.map((sub) => (
+            <div
+              key={sub.id}
+              onClick={() => onSelect(sub)}
+              className="group bg-white/90 backdrop-blur-sm border border-blue-100 rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all duration-300 cursor-pointer"
+            >
+              <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4">
+                {sub.image ? (
+                  <img
+                    src={sub.image}
+                    alt={sub.name}
+                    className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg sm:rounded-xl flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="text-2xl sm:text-3xl font-bold text-blue-400">
+                      {sub.name.charAt(0)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-slate-800 group-hover:text-blue-700 transition-colors text-sm sm:text-base">
+                    {sub.name}
+                  </h3>
                   {sub.service_charge && (
-                    <p className="text-xs sm:text-sm text-emerald-600 font-medium mt-1">₹{sub.service_charge}</p>
+                    <p className="text-emerald-600 font-medium mt-1 text-xs sm:text-sm">
+                      ₹{sub.service_charge}
+                    </p>
                   )}
                 </div>
-              </button>
-            ))}
-          </div>
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400 group-hover:text-blue-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -149,7 +154,7 @@ function SubcategoryModal({
 }
 
 // ────────────────────────────────────────────────
-// Booking Modal (with scrollable content)
+// Booking Modal – FIXED VERSION with proper z-index
 // ────────────────────────────────────────────────
 function BookingModal({
   category,
@@ -191,7 +196,11 @@ function BookingModal({
     setLocationLoading(true);
     navigator.geolocation.getCurrentPosition(
       pos => {
-        setFormData(p => ({ ...p, latitude: pos.coords.latitude.toString(), longitude: pos.coords.longitude.toString() }));
+        setFormData(p => ({
+          ...p,
+          latitude: pos.coords.latitude.toString(),
+          longitude: pos.coords.longitude.toString()
+        }));
         setLocationLoading(false);
       },
       () => {
@@ -207,7 +216,6 @@ function BookingModal({
       showToast("Please fill required fields and allow location", "error");
       return;
     }
-
     setLoading(true);
     try {
       await onSubmit(formData);
@@ -230,65 +238,82 @@ function BookingModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4" onClick={onClose}>
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl sm:rounded-3xl w-full max-w-sm sm:max-w-md max-h-[90vh] overflow-hidden flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
-        {/* Fixed Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 border-b border-blue-500/30 flex justify-between items-center z-10">
-          <div className="max-w-[80%]">
-            <h2 className="text-lg sm:text-xl font-bold text-white truncate">Book {category.name}</h2>
-            {subcategory && <p className="text-blue-100 text-sm truncate">{subcategory.name}</p>}
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[9999]"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white w-full sm:max-w-2xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header - sticky */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 flex justify-between items-start sticky top-0 z-20">
+          <div className="flex-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-white">
+              Book {category.name}
+            </h2>
+            {subcategory && (
+              <p className="text-blue-100 text-sm sm:text-base mt-1">
+                {subcategory.name}
+              </p>
+            )}
           </div>
-          <button onClick={onClose} className="text-white hover:text-blue-100 p-1 flex-shrink-0">
-            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white transition p-2 -mt-2 -mr-2"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <form id="booking-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+        {/* Scrollable content with extra bottom padding */}
+        <div className="overflow-y-auto flex-1">
+          <form id="booking-form" onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 pb-6">
             {/* Name & Mobile */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Name</label>
-                <input
-                  type="text"
-                  name="customer_name"
-                  value={formData.customer_name}
-                  onChange={handleChange}
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                  placeholder="Your name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Mobile <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  name="mobile_number"
-                  value={formData.mobile_number}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                  placeholder="+91 98765 43210"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Name
+              </label>
+              <input
+                type="text"
+                name="customer_name"
+                value={formData.customer_name}
+                onChange={handleChange}
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                placeholder="Your name"
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Address <span className="text-red-500">*</span>
+                Mobile *
               </label>
-              <textarea
+              <input
+                type="tel"
+                name="mobile_number"
+                value={formData.mobile_number}
+                onChange={handleChange}
+                required
+                maxLength={10}
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                placeholder="10-digit mobile number"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Address *
+              </label>
+              <input
+                type="text"
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
                 required
-                rows={2}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition resize-none"
-                placeholder="Full service address"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                placeholder="Your complete address"
               />
             </div>
 
@@ -324,9 +349,9 @@ function BookingModal({
               ) : (
                 <div className="text-red-600 flex items-center justify-between text-sm sm:text-base">
                   <span>{locationError || "Location required"}</span>
-                  <button 
-                    type="button" 
-                    onClick={getLocation} 
+                  <button
+                    type="button"
+                    onClick={getLocation}
                     className="text-blue-600 underline text-xs sm:text-sm hover:text-blue-800"
                   >
                     Retry
@@ -337,9 +362,9 @@ function BookingModal({
           </form>
         </div>
 
-        {/* Fixed Footer with Submit Button */}
-        <div className="sticky bottom-0 bg-gradient-to-r from-blue-600 to-indigo-600 border-t border-blue-500/30 p-4 sm:p-6 z-10">
-          <div className="flex gap-3 sm:gap-4">
+        {/* Footer – with proper z-index */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 border-t border-blue-500/30 p-4 sm:p-6 sticky bottom-0 z-20">
+          <div className="flex gap-3 sm:gap-4 max-w-md mx-auto">
             <button
               type="button"
               onClick={onClose}
@@ -377,13 +402,10 @@ export default function Service() {
   const [services, setServices] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<SubCategory | null>(null);
   const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
-
-  // Toast state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
@@ -486,7 +508,6 @@ export default function Service() {
 
   return (
     <>
-      {/* Toast Container */}
       {toast && (
         <Toast
           message={toast.message}
@@ -498,9 +519,8 @@ export default function Service() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20 relative overflow-hidden">
         {/* Animated Background Elements */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          {/* Floating particles */}
           {[...Array(15)].map((_, i) => (
-            <div 
+            <div
               key={i}
               className="absolute rounded-full bg-blue-200/20 animate-float"
               style={{
@@ -513,26 +533,12 @@ export default function Service() {
               }}
             />
           ))}
-          
-          {/* Gradient orbs */}
           <div className="absolute -top-40 -left-40 w-80 h-80 bg-gradient-to-r from-blue-200/30 to-cyan-200/20 rounded-full blur-3xl animate-pulse-slow"></div>
           <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-gradient-to-r from-indigo-200/20 to-purple-200/30 rounded-full blur-3xl animate-pulse-slow delay-1000"></div>
           <div className="absolute top-1/4 right-1/4 w-60 h-60 bg-gradient-to-r from-cyan-100/20 to-blue-100/30 rounded-full blur-3xl animate-pulse-slow delay-1500"></div>
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-8 sm:pt-12">
-          {/* Optional: You can uncomment this header if needed */}
-          {/* 
-          <div className="text-center mb-8 sm:mb-12">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-blue-700 via-indigo-800 to-blue-900 bg-clip-text text-transparent">
-              Our Services
-            </h1>
-            <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto">
-              Professional solutions for every need – fast, reliable, and trusted.
-            </p>
-          </div> 
-          */}
-
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
             {services.map((category) => (
               <div
@@ -540,7 +546,6 @@ export default function Service() {
                 className="group bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border border-blue-100 hover:border-blue-300"
                 onClick={() => handleCategoryClick(category)}
               >
-                {/* Image - compact */}
                 <div className="relative aspect-[4/3] overflow-hidden">
                   {category.image ? (
                     <img
@@ -558,18 +563,15 @@ export default function Service() {
                   <div className="absolute inset-0 bg-gradient-to-t from-blue-900/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
 
-                {/* Title & info */}
                 <div className="p-3 sm:p-4 text-center bg-gradient-to-b from-white to-blue-50/50">
                   <h3 className="text-xs sm:text-sm md:text-base font-semibold text-slate-800 group-hover:text-blue-700 transition-colors line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem]">
                     {category.name}
                   </h3>
-
                   {category.service_charge && (
                     <p className="mt-1 text-xs sm:text-sm font-medium text-emerald-600">
                       From ₹{category.service_charge}
                     </p>
                   )}
-
                   {category.subcategories?.length > 0 && (
                     <p className="mt-1 text-xs text-blue-600 font-medium">
                       {category.subcategories.length} options
@@ -603,51 +605,68 @@ export default function Service() {
 
       <style>{`
         @keyframes pulse-slow {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 0.3; transform: scale(1.05); }
+          0%, 100% {
+            opacity: 0.2;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.3;
+            transform: scale(1.05);
+          }
         }
-        
+
         @keyframes float {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(5deg); }
+          0%, 100% {
+            transform: translateY(0) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-20px) rotate(5deg);
+          }
         }
-        
+
+        @keyframes slide-up {
+          from {
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        @keyframes slide-down {
+          from {
+            transform: translate(-50%, -100%);
+            opacity: 0;
+          }
+          to {
+            transform: translate(-50%, 0);
+            opacity: 1;
+          }
+        }
+
         .animate-pulse-slow {
           animation: pulse-slow 8s ease-in-out infinite;
         }
-        
+
         .animate-float {
           animation: float 20s ease-in-out infinite;
         }
-        
+
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
+        }
+
+        .animate-slide-down {
+          animation: slide-down 0.3s ease-out;
+        }
+
         .line-clamp-2 {
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
-        }
-        
-        /* Smooth scroll for modals */
-        .overflow-y-auto {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(59, 130, 246, 0.3) transparent;
-        }
-        
-        .overflow-y-auto::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        .overflow-y-auto::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        
-        .overflow-y-auto::-webkit-scrollbar-thumb {
-          background-color: rgba(59, 130, 246, 0.3);
-          border-radius: 3px;
-        }
-        
-        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-          background-color: rgba(59, 130, 246, 0.5);
         }
       `}</style>
     </>
