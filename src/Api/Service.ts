@@ -88,7 +88,12 @@ export const makeRequest = async (requestData: any) => {
 
 export const updateRequestStatus = async (requestId: number, statusData: any) => {
     try {
-        const response = await Axios.patch(`/services/admin/requests/${requestId}/`, statusData)
+        console.log('Updating request status with data:--------', statusData)
+        let data = {
+            status: statusData,
+        }
+        // statusData.admin_notes = "Updated by admin"
+        const response = await Axios.patch(`/services/admin/requests/${requestId}/`, data)
         console.log('Request status update response:', response)
         return response.data
     } catch (error) {
@@ -96,3 +101,14 @@ export const updateRequestStatus = async (requestId: number, statusData: any) =>
         throw error
     }
 }
+
+// export const updateStatus = async (requestId: number, statusData: any) => {
+//     try {
+//         const response = await Axios.patch(`/services/admin/requests/${requestId}/`, statusData)
+//         console.log('User request status update response:', response)
+//         return response.data
+//     } catch (error) {
+//         console.error('Error updating user request status:', error)
+//         throw error
+//     }
+// }

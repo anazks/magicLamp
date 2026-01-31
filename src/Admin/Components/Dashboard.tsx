@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  FaChartLine,
-  FaWallet,
-  FaClock,
+  FaBolt,
   FaPlus,
   FaHistory,
   FaTools,
@@ -13,7 +11,7 @@ import {
 
 import AddCategory from './Addcategory';
 import AddSubCategory from './AddSubCategory';
-import History from './Hostory'; // Note: was written as Hostory in your import
+import History from './Hostory'; // corrected spelling (was Hostory)
 import { getAllServiceCategory, deleteCategory } from '../../Api/Service';
 
 interface SubCategoryItem {
@@ -38,7 +36,7 @@ interface ServiceItem {
 
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState<
-    'none' | 'add-category' | 'add-subcategory' | 'add-service' | 'history'
+    'none' | 'add-category' | 'add-subcategory' | 'history'
   >('none');
 
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -51,12 +49,6 @@ export default function Dashboard() {
     id: number;
     name: string;
   } | null>(null);
-
-  const stats = {
-    totalBookings: 12,
-    totalSpend: '₹1,250',
-    activeBookings: 2,
-  };
 
   // Fetch all service categories
   const fetchServices = async () => {
@@ -130,161 +122,182 @@ export default function Dashboard() {
   };
 
   const getStatusBadge = (isActive: boolean) =>
-    isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+    isActive
+      ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+      : 'bg-rose-100 text-rose-800 border-rose-200';
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-gray-600">Welcome back, anaz</p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-          <div className="bg-white rounded-xl p-5 shadow border border-gray-200">
-            <p className="text-sm text-gray-600 font-medium">Total Bookings</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalBookings}</p>
-            <div className="mt-3 flex items-center text-sm text-blue-600">
-              <FaChartLine className="mr-1.5" /> All time
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-purple-50/30 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header with Magic Lamp branding */}
+        <div className="mb-10 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <FaBolt className="text-white text-2xl" />
+              </div>
+              <div className="absolute inset-0 bg-purple-400 rounded-2xl blur-xl opacity-30 animate-pulse"></div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-xl p-5 shadow border border-gray-200">
-            <p className="text-sm text-gray-600 font-medium">Total Spend</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalSpend}</p>
-            <div className="mt-3 flex items-center text-sm text-green-600">
-              <FaWallet className="mr-1.5" /> Lifetime
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-5 shadow border border-gray-200">
-            <p className="text-sm text-gray-600 font-medium">Active Now</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{stats.activeBookings}</p>
-            <div className="mt-3 flex items-center text-sm text-yellow-600">
-              <FaClock className="mr-1.5" /> In progress
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Magic Lamp
+              </h1>
+              <p className="text-gray-600 mt-1">Service Provider Dashboard</p>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-10">
+        {/* Quick Action Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
           <button
             onClick={() => setActiveSection('add-category')}
-            className={`flex flex-col items-center justify-center p-5 rounded-xl shadow transition-all ${
+            className={`group relative overflow-hidden rounded-2xl p-6 shadow-lg transition-all duration-300 ${
               activeSection === 'add-category'
-                ? 'bg-blue-600 text-white shadow-lg scale-105'
-                : 'bg-white hover:bg-blue-50 border border-gray-200'
+                ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white scale-105 shadow-indigo-500/30'
+                : 'bg-white hover:shadow-xl hover:-translate-y-1 border border-indigo-100'
             }`}
           >
-            <FaPlus className="text-2xl mb-2" />
-            <span className="font-medium">Add Category</span>
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <FaPlus className="text-3xl mb-4" />
+            <h3 className="text-xl font-semibold">Add Category</h3>
           </button>
 
           <button
             onClick={() => setActiveSection('add-subcategory')}
-            className={`flex flex-col items-center justify-center p-5 rounded-xl shadow transition-all ${
+            className={`group relative overflow-hidden rounded-2xl p-6 shadow-lg transition-all duration-300 ${
               activeSection === 'add-subcategory'
-                ? 'bg-blue-600 text-white shadow-lg scale-105'
-                : 'bg-white hover:bg-blue-50 border border-gray-200'
+                ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white scale-105 shadow-indigo-500/30'
+                : 'bg-white hover:shadow-xl hover:-translate-y-1 border border-indigo-100'
             }`}
           >
-            <FaPlus className="text-2xl mb-2" />
-            <span className="font-medium">Add Subcategory</span>
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <FaPlus className="text-3xl mb-4" />
+            <h3 className="text-xl font-semibold">Add Subcategory</h3>
           </button>
 
           <button
             onClick={() => setActiveSection('history')}
-            className={`flex flex-col items-center justify-center p-5 rounded-xl shadow transition-all ${
+            className={`group relative overflow-hidden rounded-2xl p-6 shadow-lg transition-all duration-300 ${
               activeSection === 'history'
-                ? 'bg-indigo-600 text-white shadow-lg scale-105'
-                : 'bg-white hover:bg-indigo-50 border border-gray-200'
+                ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white scale-105 shadow-indigo-500/30'
+                : 'bg-white hover:shadow-xl hover:-translate-y-1 border border-indigo-100'
             }`}
           >
-            <FaHistory className="text-2xl mb-2" />
-            <span className="font-medium">View History</span>
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <FaHistory className="text-3xl mb-4" />
+            <h3 className="text-xl font-semibold">Request History</h3>
           </button>
         </div>
 
-        {/* Main Content Area */}
-        <div className="space-y-8">
+        {/* Main Content */}
+        <div className="space-y-10">
           {/* Add Forms */}
           {activeSection === 'add-category' && (
-            <div className="bg-white rounded-xl shadow border p-6">
-              <h2 className="text-xl font-semibold mb-5">Add New Category</h2>
-              <AddCategory onClose={() => setActiveSection('none')} />
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-indigo-100/50 p-7">
+              <h2 className="text-2xl font-bold text-indigo-800 mb-6 flex items-center gap-3">
+                <FaPlus className="text-indigo-600" />
+                Add New Category
+              </h2>
+              <AddCategory onClose={() => setActiveSection('none')} onSuccess={fetchServices} />
             </div>
           )}
 
           {activeSection === 'add-subcategory' && (
-            <div className="bg-white rounded-xl shadow border p-6">
-              <h2 className="text-xl font-semibold mb-5">Add New Subcategory</h2>
-              <AddSubCategory onClose={() => setActiveSection('none')} />
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-indigo-100/50 p-7">
+              <h2 className="text-2xl font-bold text-indigo-800 mb-6 flex items-center gap-3">
+                <FaPlus className="text-indigo-600" />
+                Add New Subcategory
+              </h2>
+              <AddSubCategory onClose={() => setActiveSection('none')} onSuccess={fetchServices} />
             </div>
           )}
 
           {/* History View */}
-          {activeSection === 'history' ? (
-            <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          {activeSection === 'history' && (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-indigo-100/50 overflow-hidden">
+              <div className="px-7 py-5 border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50">
+                <h2 className="text-xl font-bold text-indigo-800 flex items-center gap-3">
                   <FaHistory className="text-indigo-600" />
                   Service Request History
                 </h2>
               </div>
-              <History />
+              <div className="p-6">
+                <History />
+              </div>
             </div>
-          ) : (
-            // Services List (default view)
-            <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          )}
+
+          {/* Services / Categories List – default view */}
+          {!['add-category', 'add-subcategory', 'history'].includes(activeSection) && (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-indigo-100/50 overflow-hidden">
+              <div className="px-7 py-5 border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-indigo-800 flex items-center gap-3">
                   <FaTools className="text-indigo-600" />
-                  All Services
+                  Your Service Categories
                 </h2>
               </div>
 
               {loadingServices ? (
-                <div className="p-10 text-center text-gray-500">Loading services...</div>
+                <div className="p-12 text-center text-gray-500 animate-pulse">
+                  Loading your services...
+                </div>
               ) : servicesError ? (
-                <div className="p-8 text-center text-red-600">{servicesError}</div>
+                <div className="p-12 text-center text-rose-600">{servicesError}</div>
               ) : services.length === 0 ? (
-                <div className="p-10 text-center text-gray-500">No services found yet.</div>
+                <div className="p-16 text-center">
+                  <div className="mx-auto w-24 h-24 bg-indigo-100 rounded-full flex items-center justify-center mb-6">
+                    <FaTools className="text-5xl text-indigo-500 opacity-50" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                    No categories yet
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Start by adding your first service category
+                  </p>
+                  <button
+                    onClick={() => setActiveSection('add-category')}
+                    className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition"
+                  >
+                    Add First Category
+                  </button>
+                </div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100/80">
                   {services.map((service) => {
                     const hasSubs = service.subcategories.length > 0;
 
                     return (
                       <div key={service.id}>
                         <div
-                          className={`px-6 py-4 flex items-center justify-between transition ${
-                            hasSubs ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-default'
+                          className={`px-7 py-5 flex items-center justify-between transition-colors ${
+                            hasSubs
+                              ? 'hover:bg-indigo-50/50 cursor-pointer'
+                              : 'cursor-default'
                           }`}
                           onClick={() => hasSubs && toggleCategory(service.id)}
                         >
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold">
+                          <div className="flex items-center gap-5 flex-1">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-700 font-bold text-xl shadow-sm">
                               {service.name.charAt(0)}
                             </div>
                             <div className="flex-1">
-                              <p className="font-medium text-gray-900">{service.name}</p>
+                              <p className="font-semibold text-gray-900 text-lg">{service.name}</p>
                               {service.description && (
-                                <p className="text-sm text-gray-600 mt-0.5 line-clamp-1">
+                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                                   {service.description}
                                 </p>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-4">
-                            <div className="text-right mr-4">
-                              <p className="font-semibold text-gray-900">
+                          <div className="flex items-center gap-6">
+                            <div className="text-right">
+                              <p className="font-bold text-indigo-700">
                                 {service.service_charge ? `₹${service.service_charge}` : '—'}
                               </p>
                               <span
-                                className={`inline-block px-2.5 py-0.5 mt-1 text-xs font-medium rounded-full ${getStatusBadge(
+                                className={`inline-flex px-3 py-1 mt-2 text-xs font-semibold rounded-full border ${getStatusBadge(
                                   service.is_active
                                 )}`}
                               >
@@ -292,15 +305,13 @@ export default function Dashboard() {
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-4">
                               {hasSubs && (
-                                <>
-                                  {expandedCategory === service.id ? (
-                                    <FaChevronUp className="text-gray-500" />
-                                  ) : (
-                                    <FaChevronDown className="text-gray-500" />
-                                  )}
-                                </>
+                                expandedCategory === service.id ? (
+                                  <FaChevronUp className="text-indigo-500" />
+                                ) : (
+                                  <FaChevronDown className="text-indigo-500" />
+                                )
                               )}
 
                               <button
@@ -308,63 +319,66 @@ export default function Dashboard() {
                                   e.stopPropagation();
                                   requestDelete(service.id, service.name);
                                 }}
-                                disabled={deletingId === service.id || loadingServices}
-                                className={`text-red-600 hover:text-red-800 transition p-1 rounded hover:bg-red-50 ${
-                                  deletingId === service.id ? 'opacity-50 cursor-not-allowed' : ''
+                                disabled={deletingId === service.id}
+                                className={`p-2 rounded-lg transition ${
+                                  deletingId === service.id
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'text-rose-600 hover:bg-rose-50 hover:text-rose-700'
                                 }`}
                                 title="Delete category"
                               >
                                 {deletingId === service.id ? (
-                                  <span className="animate-spin inline-block w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full" />
+                                  <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
                                 ) : (
-                                  <FaTrashAlt className="text-lg" />
+                                  <FaTrashAlt className="text-xl" />
                                 )}
                               </button>
                             </div>
                           </div>
                         </div>
 
+                        {/* Subcategories */}
                         {expandedCategory === service.id && hasSubs && (
-                          <div className="bg-gray-50 px-6 py-4 border-t">
-                            <div className="space-y-3">
+                          <div className="bg-gradient-to-b from-indigo-50/30 to-transparent px-7 py-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {service.subcategories.map((sub) => (
                                 <div
                                   key={sub.id}
-                                  className="flex items-center justify-between bg-white p-3 rounded-lg border shadow-sm"
+                                  className="bg-white p-5 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow"
                                 >
-                                  <div className="flex items-center gap-3">
+                                  <div className="flex items-start gap-4">
                                     {sub.image ? (
                                       <img
                                         src={sub.image}
                                         alt={sub.name}
-                                        className="w-10 h-10 object-cover rounded"
+                                        className="w-14 h-14 object-cover rounded-lg"
                                       />
                                     ) : (
-                                      <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-gray-500">
+                                      <div className="w-14 h-14 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 font-medium">
                                         {sub.name.charAt(0)}
                                       </div>
                                     )}
-                                    <div>
-                                      <p className="font-medium">{sub.name}</p>
+
+                                    <div className="flex-1">
+                                      <p className="font-semibold text-gray-900">{sub.name}</p>
                                       {sub.description && (
-                                        <p className="text-sm text-gray-600 line-clamp-1">
+                                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                                           {sub.description}
                                         </p>
                                       )}
+                                      <div className="mt-3 flex items-center justify-between">
+                                        <p className="font-bold text-indigo-700">
+                                          ₹{sub.service_charge || '—'}
+                                        </p>
+                                        <span
+                                          className={`px-3 py-1 text-xs font-semibold rounded-full border ${getStatusBadge(
+                                            sub.is_active ?? true
+                                          )}`}
+                                        >
+                                          {sub.is_active ? 'Active' : 'Inactive'}
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-
-                                  <div className="text-right">
-                                    <p className="font-semibold">
-                                      ₹{sub.service_charge || '—'}
-                                    </p>
-                                    <span
-                                      className={`px-2.5 py-1 text-xs rounded-full ${getStatusBadge(
-                                        sub.is_active ?? true
-                                      )}`}
-                                    >
-                                      {sub.is_active ? 'Active' : 'Inactive'}
-                                    </span>
                                   </div>
                                 </div>
                               ))}
@@ -382,12 +396,12 @@ export default function Dashboard() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Confirm Deletion</h3>
-              <p className="text-gray-700 mb-6">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Confirm Deletion</h3>
+              <p className="text-gray-700 mb-8 leading-relaxed">
                 Are you sure you want to delete the category
-                <span className="font-medium text-red-600"> "{showDeleteConfirm.name}"</span>?
+                <span className="font-semibold text-rose-600"> "{showDeleteConfirm.name}"</span>?
                 <br />
                 This action cannot be undone.
               </p>
@@ -395,7 +409,7 @@ export default function Dashboard() {
               <div className="flex justify-end gap-4">
                 <button
                   onClick={cancelDelete}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+                  className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition font-medium"
                 >
                   Cancel
                 </button>
@@ -403,13 +417,13 @@ export default function Dashboard() {
                 <button
                   onClick={confirmDelete}
                   disabled={deletingId === showDeleteConfirm.id}
-                  className={`px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-2 ${
+                  className={`px-6 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white rounded-xl hover:from-rose-700 hover:to-rose-800 transition font-medium flex items-center gap-2 shadow-md ${
                     deletingId === showDeleteConfirm.id ? 'opacity-70 cursor-not-allowed' : ''
                   }`}
                 >
                   {deletingId === showDeleteConfirm.id ? (
                     <>
-                      <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       Deleting...
                     </>
                   ) : (
