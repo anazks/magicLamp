@@ -101,7 +101,6 @@ export const updateRequestStatus = async (requestId: number, statusData: any) =>
         throw error
     }
 }
-
 // export const updateStatus = async (requestId: number, statusData: any) => {
 //     try {
 //         const response = await Axios.patch(`/services/admin/requests/${requestId}/`, statusData)
