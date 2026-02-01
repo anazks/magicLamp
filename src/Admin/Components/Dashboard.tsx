@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import {
   FaTools, FaChevronDown, FaChevronUp, FaTrashAlt,
   FaEnvelope, FaPlus, FaHistory, FaBars, FaTimes,
-  FaHome, // added some common icons
+  FaHome, FaSignOutAlt
 } from 'react-icons/fa';
 
 import AddCategory from './Addcategory';
 import AddSubCategory from './AddSubCategory';
-import History from './Hostory'; // ensure correct file name
+import History from './Hostory'; // Make sure the file name is correct
 import { getAllServiceCategory, deleteCategory } from '../../Api/Service';
 import { addEmail, getAllEmails, deleteEmail } from '../../Api/EmailsAdmin';
 
@@ -44,9 +44,9 @@ export default function Dashboard() {
     'dashboard' | 'add-category' | 'add-subcategory' | 'history' | 'admin-emails'
   >('dashboard');
 
-  const [sidebarOpen, setSidebarOpen] = useState(false); // mobile toggle
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ── Categories ──────────────────────────────────────────────────
+  // ── Service Categories ──────────────────────────────────────────
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [servicesError, setServicesError] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export default function Dashboard() {
   const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
   const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState<{ id: number; name: string } | null>(null);
 
-  // ── Emails ──────────────────────────────────────────────────────
+  // ── Admin Emails ────────────────────────────────────────────────
   const [adminEmails, setAdminEmails] = useState<AdminEmail[]>([]);
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [emailsError, setEmailsError] = useState<string | null>(null);
@@ -64,16 +64,17 @@ export default function Dashboard() {
   const [addingEmail, setAddingEmail] = useState(false);
   const [deleteEmailId, setDeleteEmailId] = useState<number | null>(null);
 
+  // ── Fetch functions ─────────────────────────────────────────────
   const fetchCategories = async () => {
     try {
       setLoadingServices(true);
       setServicesError(null);
       const res = await getAllServiceCategory();
-      console.log('Categories API:', res);
+      console.log('Categories API response:', res);
       const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setServices(data);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load categories:', err);
       setServicesError('Failed to load service categories');
     } finally {
       setLoadingServices(false);
@@ -85,11 +86,11 @@ export default function Dashboard() {
       setLoadingEmails(true);
       setEmailsError(null);
       const res = await getAllEmails();
-      console.log('Emails API:', res);
+      console.log('Emails API response:', res);
       const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setAdminEmails(data);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load emails:', err);
       setEmailsError('Failed to load admin emails');
     } finally {
       setLoadingEmails(false);
@@ -100,40 +101,62 @@ export default function Dashboard() {
     fetchCategories();
   }, []);
 
+  // ── Navigation ──────────────────────────────────────────────────
   const handleNavClick = (section: typeof activeSection) => {
     setActiveSection(section);
-    setSidebarOpen(false); // close mobile sidebar
+    setSidebarOpen(false);
     if (section === 'admin-emails') fetchAdminEmails();
   };
 
   const goToDashboard = () => handleNavClick('dashboard');
 
-  // ── Delete Handlers ─────────────────────────────────────────────
+  // ── Logout ──────────────────────────────────────────────────────
+  const handleLogout = () => {
+    // Clear authentication tokens (adjust keys according to your app)
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('token');           // sometimes used
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken');
+
+    // Optional: clear user data if stored
+    localStorage.removeItem('user');
+    localStorage.removeItem('userData');
+
+    // Redirect to landing page
+    window.location.href = '/';
+    // Alternative if using react-router-dom:
+    // const navigate = useNavigate();
+    // navigate('/', { replace: true });
+  };
+
+  // ── Category Delete ─────────────────────────────────────────────
   const handleDeleteCategory = async () => {
     if (!deleteCategoryConfirm) return;
     try {
       await deleteCategory(deleteCategoryConfirm.id);
-      alert(`Category "${deleteCategoryConfirm.name}" deleted`);
+      alert(`"${deleteCategoryConfirm.name}" deleted successfully`);
       setDeleteCategoryConfirm(null);
-      fetchCategories();
+      await fetchCategories();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Delete failed');
+      alert(err?.response?.data?.message || 'Failed to delete category');
     }
   };
 
+  // ── Email Handlers ──────────────────────────────────────────────
   const handleAddEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      alert('Please enter a valid email');
+      alert('Please enter a valid email address');
       return;
     }
     try {
       setAddingEmail(true);
       await addEmail({ email: newEmail.trim(), priority: newPriority });
+      alert('Email added successfully');
       setNewEmail('');
       setNewPriority(3);
-      fetchAdminEmails();
-      alert('Email added');
+      await fetchAdminEmails();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to add email');
     } finally {
@@ -144,10 +167,10 @@ export default function Dashboard() {
   const handleDeleteEmail = async (id: number) => {
     try {
       await deleteEmail(id);
-      fetchAdminEmails();
-      alert('Email deleted');
+      alert('Email deleted successfully');
+      await fetchAdminEmails();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Delete failed');
+      alert(err?.response?.data?.message || 'Failed to delete email');
     }
   };
 
@@ -169,74 +192,68 @@ export default function Dashboard() {
           </button>
         </div>
 
-        <nav className="mt-6 px-3 space-y-1">
-          <button
-            onClick={goToDashboard}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              activeSection === 'dashboard'
-                ? 'bg-indigo-50 text-indigo-700'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <FaHome /> Dashboard
-          </button>
-
-          <button
-            onClick={() => handleNavClick('add-category')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              activeSection === 'add-category'
-                ? 'bg-indigo-50 text-indigo-700'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <FaPlus /> Add Category
-          </button>
-
-          <button
-            onClick={() => handleNavClick('add-subcategory')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              activeSection === 'add-subcategory'
-                ? 'bg-indigo-50 text-indigo-700'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <FaPlus className="text-xs" /> Add Subcategory
-          </button>
-
-          <button
-            onClick={() => handleNavClick('history')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              activeSection === 'history'
-                ? 'bg-indigo-50 text-indigo-700'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <FaHistory /> Request History
-          </button>
-
-          <button
-            onClick={() => handleNavClick('admin-emails')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              activeSection === 'admin-emails'
-                ? 'bg-indigo-50 text-indigo-700'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <FaEnvelope /> Admin Emails
-          </button>
-
-          {/* Spacer + Settings placeholder */}
-          {/* <div className="pt-8 mt-8 border-t">
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
-              <FaCog /> Settings
+        <nav className="mt-6 px-3 flex flex-col h-[calc(100%-4rem)]">
+          <div className="flex-1 space-y-1">
+            <button
+              onClick={goToDashboard}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                activeSection === 'dashboard' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FaHome /> Dashboard
             </button>
-          </div> */}
+
+            <button
+              onClick={() => handleNavClick('add-category')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                activeSection === 'add-category' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FaPlus /> Add Category
+            </button>
+
+            <button
+              onClick={() => handleNavClick('add-subcategory')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                activeSection === 'add-subcategory' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FaPlus className="text-xs" /> Add Subcategory
+            </button>
+
+            <button
+              onClick={() => handleNavClick('history')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                activeSection === 'history' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FaHistory /> Request History
+            </button>
+
+            <button
+              onClick={() => handleNavClick('admin-emails')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                activeSection === 'admin-emails' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FaEnvelope /> Admin Emails
+            </button>
+          </div>
+
+          {/* Logout button at bottom */}
+          <div className="px-3 pb-6 mt-auto border-t pt-4">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <FaSignOutAlt /> Logout
+            </button>
+          </div>
         </nav>
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar */}
         <header className="bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between h-16 px-6">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-600">
@@ -251,11 +268,9 @@ export default function Dashboard() {
                'Admin Emails'}
             </h1>
 
-            {/* Right side - user area placeholder */}
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">Admin User</p>
-                {/* <p className="text-xs text-gray-500">admin@example.com</p> */}
+                <p className="text-sm font-medium text-gray-900">Admin</p>
               </div>
               <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold">
                 A
@@ -264,7 +279,6 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Content */}
         <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
           {activeSection === 'dashboard' ? (
             loadingServices ? (
@@ -379,14 +393,14 @@ export default function Dashboard() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                       <select
                         value={newPriority}
-                        onChange={(e) => setNewPriority(Number(e.target.value) as any)}
+                        onChange={(e) => setNewPriority(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
                       >
-                        <option value={1}>1 </option>
+                        <option value={1}>1 – Highest</option>
                         <option value={2}>2</option>
-                        <option value={3}>3 </option>
+                        <option value={3}>3 – Normal</option>
                         <option value={4}>4</option>
-                        <option value={5}>5 </option>
+                        <option value={5}>5 – Lowest</option>
                       </select>
                     </div>
                   </div>
@@ -450,7 +464,7 @@ export default function Dashboard() {
         </main>
       </div>
 
-      {/* Delete Modals */}
+      {/* Delete Confirmation Modals */}
       {deleteCategoryConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
