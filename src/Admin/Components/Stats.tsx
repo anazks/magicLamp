@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react';
-import { 
-  FaClock, FaCheckCircle, FaTimesCircle, FaSpinner, 
-  FaChartBar, FaUsers, FaUserCog 
-} from 'react-icons/fa';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, PieChart, Pie, Cell, Legend 
-} from 'recharts';
+import { FaClock, FaCheckCircle, FaTimesCircle, FaSpinner, FaChartBar, FaUsers, FaUserCog } from 'react-icons/fa';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { DashboardStats } from '../../Api/Service';
 import Loader from '../../Component/Loader/Loader';
 
@@ -29,15 +23,35 @@ interface StatsResponse {
     count: number;
   }>;
   category_analytics: {
-    summary: Array<{ category: string; count: number }>;
-    trend: Array<{ date: string; category: string; count: number }>;
+    summary: Array<{
+      category: string;
+      count: number
+    }>;
+    trend: Array<{
+      date: string;
+      category: string;
+      count: number
+    }>;
   };
   subcategory_analytics: {
-    summary: Array<{ subcategory: string; count: number }>;
-    trend: Array<{ date: string; subcategory: string; count: number }>;
+    summary: Array<{
+      subcategory: string;
+      count: number
+    }>;
+    trend: Array<{
+      date: string;
+      subcategory: string;
+      count: number
+    }>;
   };
-  user_growth: Array<{ date: string; count: number }>;
-  user_roles_distribution: Array<{ role: string; count: number }>;
+  user_growth: Array<{
+    date: string;
+    count: number
+  }>;
+  user_roles_distribution: Array<{
+    role: string;
+    count: number
+  }>;
 }
 
 const COLORS = ['#6366f1', '#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6'];
@@ -52,8 +66,7 @@ export default function Stats() {
       try {
         setLoading(true);
         setError(null);
-        
-        const response = await DashboardStats();  
+        const response = await DashboardStats();
         setStats(response.data || response);
       } catch (err: any) {
         console.error("Failed to load dashboard stats:", err);
@@ -72,17 +85,19 @@ export default function Stats() {
 
   if (error || !stats) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-        <p className="text-red-600 font-medium">{error || "No data available"}</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-500 text-center">
+          {error || "No data available"}
+        </div>
       </div>
     );
   }
 
-  const { 
+  const {
     service_requests_summary: summary,
     category_analytics,
     user_growth,
-    user_roles_distribution 
+    user_roles_distribution
   } = stats;
 
   // Prepare data for Service Requests Status Bar Chart
@@ -100,122 +115,149 @@ export default function Stats() {
     .slice(0, 6);
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
-        <p className="text-gray-600 mt-1">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Dashboard Overview</h1>
+        <p className="text-gray-500 mt-1">
           {stats.date_range.start} → {stats.date_range.end}
         </p>
       </div>
 
       {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
-        <StatCard icon={<FaChartBar />} title="Total Requests" value={summary.total} color="#6366f1" />
-        <StatCard icon={<FaClock />} title="Pending" value={summary.pending} color="#f59e0b" />
-        <StatCard icon={<FaSpinner />} title="In Progress" value={summary.in_progress} color="#3b82f6" />
-        <StatCard icon={<FaCheckCircle />} title="Completed" value={summary.completed} color="#10b981" />
-        <StatCard icon={<FaTimesCircle />} title="Cancelled" value={summary.cancelled} color="#ef4444" />
-        <StatCard icon={<FaUsers />} title="New Users" value={user_growth.reduce((s, i) => s + i.count, 0)} color="#8b5cf6" />
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <StatCard
+          icon={<FaChartBar />}
+          title="Total Requests"
+          value={summary.total}
+          color="#6366f1"
+        />
+        <StatCard
+          icon={<FaClock />}
+          title="Pending"
+          value={summary.pending}
+          color="#f59e0b"
+        />
+        <StatCard
+          icon={<FaSpinner />}
+          title="In Progress"
+          value={summary.in_progress}
+          color="#3b82f6"
+        />
+        <StatCard
+          icon={<FaCheckCircle />}
+          title="Completed"
+          value={summary.completed}
+          color="#10b981"
+        />
+        <StatCard
+          icon={<FaTimesCircle />}
+          title="Cancelled"
+          value={summary.cancelled}
+          color="#ef4444"
+        />
+        <StatCard
+          icon={<FaUsers />}
+          title="New Users"
+          value={user_growth.reduce((s, i) => s + i.count, 0)}
+          color="#8b5cf6"
+        />
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Service Requests Status - Bar Chart */}
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-6">Service Requests by Status</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={statusData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-700">
+            Service Requests by Status
+          </h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={statusData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                {statusData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
         {/* Top Categories - Horizontal Bar */}
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-6">Top Service Categories</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={topCategories}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis type="category" dataKey="category" width={180} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#6366f1" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-700">
+            Top Service Categories
+          </h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={topCategories} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" />
+              <YAxis dataKey="category" type="category" width={120} />
+              <Tooltip />
+              <Bar dataKey="count" fill="#6366f1" radius={[0, 8, 8, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
       {/* Bottom Row - User Roles & Growth */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* User Roles - Pie Chart */}
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-5 flex items-center gap-2">
-            <FaUserCog className="text-purple-600" /> User Roles Distribution
-          </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={user_roles_distribution}
-                  dataKey="count"
-                  nameKey="role"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  label
-                >
-                  {user_roles_distribution.map(( index) => (   // ← fixed: added entry, index
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-700 flex items-center gap-2">
+            <FaUserCog /> User Roles Distribution
+          </h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={user_roles_distribution}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ role, percent }) => `${role} ${(percent * 100).toFixed(0)}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="count"
+              >
+                {user_roles_distribution.map((_entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
 
         {/* New Users Growth */}
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-5 flex items-center gap-2">
-            <FaUsers className="text-green-600" /> New Users (Period)
-          </h3>
-          <div className="text-4xl font-bold text-green-700 mb-2">
-            {user_growth.reduce((sum, item) => sum + item.count, 0)}
-          </div>
-          <p className="text-sm text-gray-500 mb-4">
-            New registrations from {stats.date_range.start} to {stats.date_range.end}
-          </p>
-
-          {user_growth.length > 1 && (
-            <div className="text-sm text-gray-600">
-              Daily breakdown:
-              <ul className="mt-2 space-y-1 list-disc pl-5">
-                {user_growth.map((day) => (
-                  <li key={day.date}>
-                    {day.date}: <strong>{day.count}</strong> new user{day.count !== 1 ? 's' : ''}
-                  </li>
-                ))}
-              </ul>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-700 flex items-center gap-2">
+            <FaUsers /> New Users (Period)
+          </h2>
+          <div className="text-center">
+            <div className="text-5xl font-bold text-indigo-600 mb-2">
+              {user_growth.reduce((sum, item) => sum + item.count, 0)}
             </div>
-          )}
+            <p className="text-gray-500 mb-4">
+              New registrations from {stats.date_range.start} to {stats.date_range.end}
+            </p>
+            {user_growth.length > 1 && (
+              <div className="mt-6 text-left">
+                <h3 className="font-semibold text-gray-700 mb-2">Daily breakdown:</h3>
+                <ul className="space-y-1 text-sm text-gray-600 max-h-40 overflow-y-auto">
+                  {user_growth.map((day) => (
+                    <li key={day.date} className="flex justify-between">
+                      <span>{day.date}:</span>
+                      <span className="font-medium">{day.count} new user{day.count !== 1 ? 's' : ''}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -234,17 +276,13 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-5 hover:shadow transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-600 font-medium">{title}</p>
-          <p className="text-2xl font-bold mt-1" style={{ color }}>
-            {value.toLocaleString()}
-          </p>
-        </div>
-        <div className="text-3xl opacity-80" style={{ color }}>
-          {icon}
-        </div>
+    <div className="bg-white rounded-lg shadow p-4 flex flex-col">
+      <div className="text-sm text-gray-500 mb-2">{title}</div>
+      <div className="text-2xl font-bold" style={{ color }}>
+        {value.toLocaleString()}
+      </div>
+      <div className="mt-2 text-right" style={{ color }}>
+        {icon}
       </div>
     </div>
   );
