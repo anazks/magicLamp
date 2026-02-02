@@ -157,6 +157,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await generateOTP({ identifier: formData.email });
+
       localStorage.setItem("loginEmail", formData.email);
       setIsOTPSent(true);
       setCountdown(60);
@@ -210,9 +211,8 @@ export default function LoginPage() {
 
       showToast("Login successful!", "success");
 
-      setTimeout(async () => {
+      setTimeout( () => {
         if (res.is_admin || res.role === "admin") {
-          await localStorage.setItem("isAdmin", "true");
           navigate("/admin", { replace: true });
         } else {
           navigate("/home", { replace: true });
