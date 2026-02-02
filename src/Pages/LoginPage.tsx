@@ -67,6 +67,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isOTPSent, setIsOTPSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [notRegistered, setNotRegistered] = useState(false);
 
   const [formData, setFormData] = useState<{
     email: string;
@@ -83,30 +84,24 @@ export default function LoginPage() {
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // ─── Check localStorage & clear inconsistent state ───────────────────────
+  // Clear inconsistent state on mount / token change
   useEffect(() => {
     const accessToken = localStorage.getItem("accessToken");
     const refreshToken = localStorage.getItem("refreshToken");
 
-    // If tokens exist anywhere → redirect
-    // if (accessToken || contextToken) {
-    //   // Optional: you could also check if it's admin here
-    //   navigate("/home", { replace: true });
-    //   return;
-    // }
-
-    // If NO tokens in localStorage → make sure context is also cleared
     if (!accessToken && !refreshToken) {
-      setToken(null);                    // clear auth context
-      localStorage.removeItem("loginEmail"); // clean any leftover login state
-      setIsOTPSent(false);               // reset OTP flow
+      setToken(null);
+      localStorage.removeItem("loginEmail");
+      setIsOTPSent(false);
       setFormData({
         email: "",
         otp: Array(6).fill(""),
       });
+      setNotRegistered(false);
     }
-  }, [contextToken, setToken, navigate]);
+  }, [contextToken, setToken]);
 
+  // Countdown timer
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
@@ -120,6 +115,7 @@ export default function LoginPage() {
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, email: e.target.value }));
+    if (notRegistered) setNotRegistered(false);
   };
 
   const handleOTPChange = (index: number, value: string) => {
@@ -155,15 +151,49 @@ export default function LoginPage() {
     }
 
     setIsLoading(true);
-    try {
-      await generateOTP({ identifier: formData.email });
+    setNotRegistered(false);
 
-      localStorage.setItem("loginEmail", formData.email);
-      setIsOTPSent(true);
-      setCountdown(60);
-      showToast(`OTP sent to ${formData.email}`, "success");
+    try {
+      const otpResponse = await generateOTP({ identifier: formData.email });
+      console.log("OTP generation response:", otpResponse);
+
+      // ── Preferred flow: check success === true first ───────────────────
+      if (otpResponse?.status === 200 && otpResponse?.data.OTP) {
+        localStorage.setItem("loginEmail", formData.email);
+        setIsOTPSent(true);
+        setCountdown(60);
+        showToast(`OTP sent to ${formData.email}`, "success");
+        return;
+      }
+
+      // ── success === false cases ────────────────────────────────────────
+      if (otpResponse?.data.success === false) {
+        const msg = (otpResponse.data.message || "").toLowerCase().trim();
+
+        // User not registered / does not exist
+        if (
+          msg.includes("does not exist") ||
+          msg.includes("not registered") ||
+          msg.includes("not found") ||
+          msg.includes("no user") ||
+          msg.includes("user not found") ||
+          msg === "user does not exist"
+        ) {
+          setNotRegistered(true);
+          showToast("This email is not registered yet.", "error");
+          return;
+        }
+
+        // Other failure reasons from backend
+        throw new Error(otpResponse.message || "Failed to send OTP");
+      }
+
+      // ── Malformed response (neither success true nor false) ────────────
+      throw new Error("Invalid response format from server");
+
     } catch (err: any) {
-      showToast(err.message || "Failed to send OTP", "error");
+      console.error("OTP send failed:", err);
+      showToast(err.message || "Failed to send OTP. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -180,7 +210,10 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      await generateOTP({ identifier: email });
+      const res = await generateOTP({ identifier: email });
+      if (res?.success !== true) {
+        throw new Error(res?.message || "Failed to resend OTP");
+      }
       setCountdown(60);
       showToast("New OTP sent", "success");
     } catch (err: any) {
@@ -200,7 +233,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const email = localStorage.getItem("loginEmail");
-      if (!email) throw new Error("Email missing");
+      if (!email) throw new Error("Email missing from session");
 
       const res = await otpVerificationLogin({ otp, identifier: email });
 
@@ -211,7 +244,7 @@ export default function LoginPage() {
 
       showToast("Login successful!", "success");
 
-      setTimeout( () => {
+      setTimeout(() => {
         if (res.is_admin || res.role === "admin") {
           navigate("/admin", { replace: true });
         } else {
@@ -235,11 +268,12 @@ export default function LoginPage() {
 
   const handleGoBack = () => {
     setIsOTPSent(false);
+    setNotRegistered(false);
     localStorage.removeItem("loginEmail");
     setFormData({ email: "", otp: Array(6).fill("") });
   };
 
-  // If we still have token after cleanup → redirect
+  // Redirect if already authenticated
   const storedToken = localStorage.getItem("accessToken") || contextToken;
   if (storedToken) {
     return <Navigate to="/home" replace />;
@@ -291,6 +325,27 @@ export default function LoginPage() {
                     <FaCheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500" />
                   )}
                 </div>
+
+                {notRegistered && (
+                  <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-sm">
+                    <p className="font-medium">This email is not registered yet.</p>
+                    <p className="mt-1.5">
+                      Create an account to get started:{" "}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate("/register", {
+                            state: { email: formData.email },
+                            replace: true,
+                          })
+                        }
+                        className="font-semibold text-indigo-600 hover:text-indigo-800 underline-offset-2 hover:underline"
+                      >
+                        Sign up here →
+                      </button>
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* OTP Section */}
@@ -334,7 +389,7 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Main Action Button */}
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading || (isOTPSent && formData.otp.join("").length !== 6)}
@@ -376,19 +431,15 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Google Button */}
-            {/* <div className="flex justify-center">
-              <button className="flex items-center justify-center gap-3 w-full max-w-xs py-3.5 border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors font-medium text-gray-700">
-                <FaGoogle className="text-red-500 text-xl" />
-                Continue with Google
-              </button>
-            </div> */}
-            <GoogleAuth/>
+            <GoogleAuth />
 
             {/* Sign up link */}
             <p className="mt-10 text-center text-gray-600">
               New here?{" "}
-              <a href="/register" className="font-medium text-indigo-600 hover:text-indigo-800 underline-offset-2 hover:underline">
+              <a
+                href="/register"
+                className="font-medium text-indigo-600 hover:text-indigo-800 underline-offset-2 hover:underline"
+              >
                 Create an account
               </a>
             </p>

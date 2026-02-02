@@ -17,8 +17,9 @@ export const generateOTP = async (data: any) => {
         console.log("Generating OTP with data---------------------+++:", data);
         const response = await Axios.post('/home/generate_otp/', data);
         console.log("OTP generation response---------------------:", response);
-        return response.data;
-    } catch (error) {
+        return response;
+    } catch (error: any) {
+        console.log("Error in generating OTP---------------------+++:", error);
         throw error;
     }
 }
