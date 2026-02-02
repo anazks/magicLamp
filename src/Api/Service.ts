@@ -101,13 +101,34 @@ export const updateRequestStatus = async (requestId: number, statusData: any) =>
         throw error
     }
 }
-// export const updateStatus = async (requestId: number, statusData: any) => {
-//     try {
-//         const response = await Axios.patch(`/services/admin/requests/${requestId}/`, statusData)
-//         console.log('User request status update response:', response)
-//         return response.data
-//     } catch (error) {
-//         console.error('Error updating user request status:', error)
-//         throw error
-//     }
-// }
+export const updateCategory = async (categoryId: number, categoryData: any) => {
+    try {
+        const response = await Axios.patch(`/services/admin/categories/${categoryId}/`, categoryData)
+        console.log('Category update response:', response)
+        return response.data
+    } catch (error) {
+        console.error('Error updating category:', error)
+        throw error
+    }
+}
+
+export const updateSubCategory = async (subCategoryId: number, subCategoryData: any) => {
+    try {
+        const response = await Axios.patch(`/services/admin/subcategories/${subCategoryId}/`, subCategoryData)
+        console.log('Sub-category update response:', response)
+        return response.data
+    } catch (error) {
+        console.error('Error updating sub-category:', error)
+        throw error
+    }
+}
+export const deleteSubCategory = async (subCategoryId: number) => {
+    try {
+        const response = await Axios.delete(`/services/admin/subcategories/${subCategoryId}/`)
+        console.log('Sub-category deleted response:', response)
+        return response
+    } catch (error) {
+        console.error('Error deleting sub-category:', error)
+        throw error
+    }
+}

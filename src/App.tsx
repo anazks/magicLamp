@@ -15,7 +15,13 @@ export default function App() {
           <Route path="/home" element={ <Home/> } />
           <Route path="/login" element={ <LoginPage/> } />
           <Route path="/register" element={ <Register/> } />
-          <Route path="/admin" element={ <AdminLayout/> } />
+          {
+            /* Admin Routes */
+            localStorage.getItem("isAdmin") === "true" && (
+              <Route path="/admin" element={ <AdminLayout/> } />
+            )
+          }
+          {/* <Route path="/admin" element={ <AdminLayout/> } /> */}
         </Routes>
       </AuthProvider>
     </>

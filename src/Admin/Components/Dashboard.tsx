@@ -1,16 +1,10 @@
 import { useState, useEffect } from 'react';
-import {
-  FaTools, FaChevronDown, FaChevronUp, FaTrashAlt,
-  FaEnvelope, FaPlus, FaHistory, FaBars, FaTimes,
-  FaHome, FaSignOutAlt
-} from 'react-icons/fa';
-
+import { FaTools, FaChevronDown, FaChevronUp, FaTrashAlt, FaEnvelope, FaPlus, FaHistory, FaBars, FaListAlt, FaSignOutAlt, FaEdit } from 'react-icons/fa';
 import AddCategory from './Addcategory';
 import AddSubCategory from './AddSubCategory';
-import History from './Hostory'; // Make sure the file name is correct
-import { getAllServiceCategory, deleteCategory } from '../../Api/Service';
+import History from './Hostory';
+import { getAllServiceCategory, deleteCategory, updateCategory, updateSubCategory, deleteSubCategory } from '../../Api/Service';
 import { addEmail, getAllEmails, deleteEmail } from '../../Api/EmailsAdmin';
-
 import logo from '../../assets/logo.png';
 
 interface SubCategoryItem {
@@ -41,36 +35,62 @@ interface AdminEmail {
 
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState<
-    'dashboard' | 'add-category' | 'add-subcategory' | 'history' | 'admin-emails'
-  >('dashboard');
-
+    'requests' | 'add-category' | 'add-subcategory' | 'categories' | 'admin-emails'
+  >('requests');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ── Service Categories ──────────────────────────────────────────
+  // Service Categories
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [servicesError, setServicesError] = useState<string | null>(null);
-
   const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
+
+  // Delete Category
   const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState<{ id: number; name: string } | null>(null);
 
-  // ── Admin Emails ────────────────────────────────────────────────
+  // Delete Subcategory
+  const [deleteSubConfirm, setDeleteSubConfirm] = useState<{
+    categoryId: number;
+    subId: number;
+    subName: string;
+  } | null>(null);
+
+  // Edit Category Modal
+  const [editingCategory, setEditingCategory] = useState<ServiceItem | null>(null);
+  const [editCatForm, setEditCatForm] = useState({
+    name: '',
+    description: '',
+    service_charge: '',
+    is_active: true,
+  });
+
+  // Edit Subcategory Modal
+  const [editingSubCategory, setEditingSubCategory] = useState<{
+    categoryId: number;
+    sub: SubCategoryItem;
+  } | null>(null);
+  const [editSubForm, setEditSubForm] = useState({
+    name: '',
+    description: '',
+    service_charge: '',
+    is_active: true,
+  });
+
+  // Admin Emails
   const [adminEmails, setAdminEmails] = useState<AdminEmail[]>([]);
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [emailsError, setEmailsError] = useState<string | null>(null);
-
   const [newEmail, setNewEmail] = useState('');
   const [newPriority, setNewPriority] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [addingEmail, setAddingEmail] = useState(false);
   const [deleteEmailId, setDeleteEmailId] = useState<number | null>(null);
 
-  // ── Fetch functions ─────────────────────────────────────────────
+  // ── Data Fetching ──────────────────────────────────────────────
   const fetchCategories = async () => {
     try {
       setLoadingServices(true);
       setServicesError(null);
       const res = await getAllServiceCategory();
-      console.log('Categories API response:', res);
       const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setServices(data);
     } catch (err) {
@@ -86,7 +106,6 @@ export default function Dashboard() {
       setLoadingEmails(true);
       setEmailsError(null);
       const res = await getAllEmails();
-      console.log('Emails API response:', res);
       const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setAdminEmails(data);
     } catch (err) {
@@ -101,49 +120,115 @@ export default function Dashboard() {
     fetchCategories();
   }, []);
 
-  // ── Navigation ──────────────────────────────────────────────────
+  // ── Navigation ─────────────────────────────────────────────────
   const handleNavClick = (section: typeof activeSection) => {
     setActiveSection(section);
     setSidebarOpen(false);
     if (section === 'admin-emails') fetchAdminEmails();
+    if (section === 'categories') fetchCategories();
   };
 
-  const goToDashboard = () => handleNavClick('dashboard');
+  const goToHome = () => handleNavClick('requests');
 
-  // ── Logout ──────────────────────────────────────────────────────
+  // ── Logout ─────────────────────────────────────────────────────
   const handleLogout = () => {
-    // Clear authentication tokens (adjust keys according to your app)
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    localStorage.removeItem('token');           // sometimes used
+    localStorage.removeItem('token');
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
-
-    // Optional: clear user data if stored
     localStorage.removeItem('user');
     localStorage.removeItem('userData');
-
-    // Redirect to landing page
     window.location.href = '/';
-    // Alternative if using react-router-dom:
-    // const navigate = useNavigate();
-    // navigate('/', { replace: true });
   };
 
-  // ── Category Delete ─────────────────────────────────────────────
+  // ── Category Delete ────────────────────────────────────────────
   const handleDeleteCategory = async () => {
     if (!deleteCategoryConfirm) return;
     try {
       await deleteCategory(deleteCategoryConfirm.id);
       alert(`"${deleteCategoryConfirm.name}" deleted successfully`);
       setDeleteCategoryConfirm(null);
-      await fetchCategories();
+      fetchCategories();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to delete category');
     }
   };
 
-  // ── Email Handlers ──────────────────────────────────────────────
+  // ── Subcategory Delete ─────────────────────────────────────────
+  const handleDeleteSubCategory = async () => {
+    if (!deleteSubConfirm) return;
+    try {
+      await deleteSubCategory(deleteSubConfirm.subId);
+      alert(`"${deleteSubConfirm.subName}" deleted successfully`);
+      setDeleteSubConfirm(null);
+      fetchCategories();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to delete subcategory');
+    }
+  };
+
+  // ── Edit Category ──────────────────────────────────────────────
+  const startEditCategory = (cat: ServiceItem) => {
+    setEditingCategory(cat);
+    setEditCatForm({
+      name: cat.name,
+      description: cat.description || '',
+      service_charge: cat.service_charge || '',
+      is_active: cat.is_active,
+    });
+  };
+
+  const handleUpdateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+
+    try {
+      await updateCategory(editingCategory.id, {
+        name: editCatForm.name.trim(),
+        description: editCatForm.description.trim() || undefined,
+        service_charge: editCatForm.service_charge.trim() || undefined,
+        is_active: editCatForm.is_active,
+      });
+      alert('Category updated successfully');
+      setEditingCategory(null);
+      fetchCategories();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to update category');
+    }
+  };
+
+  // ── Edit Subcategory ───────────────────────────────────────────
+  const startEditSubCategory = (categoryId: number, sub: SubCategoryItem) => {
+    setEditingSubCategory({ categoryId, sub });
+    setEditSubForm({
+      name: sub.name,
+      description: sub.description || '',
+      service_charge: sub.service_charge || '',
+      is_active: sub.is_active ?? true,
+    });
+  };
+
+  const handleUpdateSubCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSubCategory) return;
+
+    try {
+      await updateSubCategory(editingSubCategory.sub.id, {
+        name: editSubForm.name.trim(),
+        description: editSubForm.description.trim() || undefined,
+        service_charge: editSubForm.service_charge.trim() || undefined,
+        is_active: editSubForm.is_active,
+      });
+      alert('Subcategory updated successfully');
+      setEditingSubCategory(null);
+      fetchCategories();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to update subcategory');
+    }
+  };
+
+  // ── Email Handlers ─────────────────────────────────────────────
   const handleAddEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
@@ -156,7 +241,7 @@ export default function Dashboard() {
       alert('Email added successfully');
       setNewEmail('');
       setNewPriority(3);
-      await fetchAdminEmails();
+      fetchAdminEmails();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to add email');
     } finally {
@@ -168,275 +253,141 @@ export default function Dashboard() {
     try {
       await deleteEmail(id);
       alert('Email deleted successfully');
-      await fetchAdminEmails();
+      fetchAdminEmails();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to delete email');
     }
   };
 
+  const getPageTitle = () => {
+    switch (activeSection) {
+      case 'requests': return 'Service Requests';
+      case 'add-category': return 'Add Category';
+      case 'add-subcategory': return 'Add Subcategory';
+      case 'categories': return 'Service Categories';
+      case 'admin-emails': return 'Admin Emails';
+      default: return 'Dashboard';
+    }
+  };
+
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar – unchanged */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-auto ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="flex items-center justify-between h-16 px-6 border-b bg-indigo-600 text-white">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="Logo" className="h-8 w-auto" />
-            <span className="text-lg font-semibold">Magic Lamp</span>
-          </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden">
-            <FaTimes className="text-xl" />
-          </button>
-        </div>
-
-        <nav className="mt-6 px-3 flex flex-col h-[calc(100%-4rem)]">
-          <div className="flex-1 space-y-1">
-            <button
-              onClick={goToDashboard}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'dashboard' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <FaHome /> Dashboard
-            </button>
-
-            <button
-              onClick={() => handleNavClick('add-category')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'add-category' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <FaPlus /> Add Category
-            </button>
-
-            <button
-              onClick={() => handleNavClick('add-subcategory')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'add-subcategory' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <FaPlus className="text-xs" /> Add Subcategory
-            </button>
-
-            <button
-              onClick={() => handleNavClick('history')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'history' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <FaHistory /> Request History
-            </button>
-
-            <button
-              onClick={() => handleNavClick('admin-emails')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'admin-emails' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <FaEnvelope /> Admin Emails
-            </button>
-          </div>
-
-          {/* Logout button at bottom */}
-          <div className="px-3 pb-6 mt-auto border-t pt-4">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <FaSignOutAlt /> Logout
-            </button>
-          </div>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between h-16 px-6">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-600">
-              <FaBars className="text-xl" />
-            </button>
-
-            <h1 className="text-xl font-semibold text-gray-800">
-              {activeSection === 'dashboard' ? 'Service Categories' :
-               activeSection === 'add-category' ? 'Add Category' :
-               activeSection === 'add-subcategory' ? 'Add Subcategory' :
-               activeSection === 'history' ? 'Request History' :
-               'Admin Emails'}
-            </h1>
-
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">Admin</p>
-              </div>
-              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold">
-                A
-              </div>
+        {/* ... sidebar content remains the same ... */}
+        <div className="h-full flex flex-col">
+          <div className="p-6 border-b">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={goToHome}>
+              <img src={logo} alt="Magic Lamp" className="h-10 w-10" />
+              <span className="text-xl font-bold text-gray-800">Magic Lamp</span>
             </div>
           </div>
-        </header>
 
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
-          {activeSection === 'dashboard' ? (
-            loadingServices ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+            <button onClick={() => handleNavClick('requests')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeSection === 'requests' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+              <FaHistory className="text-lg" /> Service Requests
+            </button>
+            <button onClick={() => handleNavClick('add-category')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeSection === 'add-category' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+              <FaPlus className="text-lg" /> Add Category
+            </button>
+            <button onClick={() => handleNavClick('add-subcategory')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeSection === 'add-subcategory' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+              <FaTools className="text-lg" /> Add Subcategory
+            </button>
+            <button onClick={() => handleNavClick('admin-emails')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeSection === 'admin-emails' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+              <FaEnvelope className="text-lg" /> Admin Emails
+            </button>
+            <button onClick={() => handleNavClick('categories')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeSection === 'categories' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+              <FaListAlt className="text-lg" /> Service Categories
+            </button>
+          </nav>
+
+          <div className="p-4 border-t">
+            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+              <FaSignOutAlt className="text-lg" /> Logout
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="lg:hidden fixed inset-0 bg-black/20 z-40" />}
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="sticky top-0 z-30 bg-white border-b shadow-sm">
+          <div className="px-4 lg:px-8 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-600">
+                <FaBars size={24} />
+              </button>
+              <h1 className="text-2xl font-bold text-gray-800">{getPageTitle()}</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600 hidden sm:block">Admin</span>
+              <div className="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-semibold">A</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 lg:p-8">
+          {activeSection === 'requests' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow-sm">
+                <div className="px-6 py-4 border-b">
+                  <h2 className="text-lg font-semibold text-gray-800">Service Requests</h2>
+                </div>
+                <History />
               </div>
-            ) : servicesError ? (
-              <div className="text-center py-12 text-red-600">{servicesError}</div>
-            ) : services.length === 0 ? (
-              <div className="text-center py-16">
-                <FaTools className="mx-auto text-6xl text-gray-300 mb-4" />
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">No categories yet</h3>
-                <p className="text-gray-500 mb-6">Start by adding your first service category</p>
-                <button
-                  onClick={() => handleNavClick('add-category')}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                >
-                  Add Category
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {services.map((cat) => (
-                  <div key={cat.id} className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-                    <div
-                      className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
-                      onClick={() => cat.subcategories?.length > 0 && setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
-                    >
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-semibold">
-                          {cat.name.charAt(0)}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{cat.name}</h3>
-                          {cat.description && <p className="text-sm text-gray-600 mt-1">{cat.description}</p>}
-                        </div>
-                      </div>
+            </div>
+          )}
 
-                      <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <p className="font-medium">{cat.service_charge ? `₹${cat.service_charge}` : '—'}</p>
-                          <span className={`inline-block px-3 py-1 mt-1 text-xs font-medium rounded-full ${
-                            cat.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {cat.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                          {cat.subcategories?.length > 0 && (
-                            expandedCategory === cat.id ? <FaChevronUp /> : <FaChevronDown />
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteCategoryConfirm({ id: cat.id, name: cat.name });
-                            }}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <FaTrashAlt />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {expandedCategory === cat.id && cat.subcategories?.length > 0 && (
-                      <div className="px-6 pb-6 bg-gray-50">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                          {cat.subcategories.map((sub) => (
-                            <div key={sub.id} className="bg-white p-4 rounded-lg border shadow-sm">
-                              <h4 className="font-medium">{sub.name}</h4>
-                              {sub.description && <p className="text-sm text-gray-600 mt-1">{sub.description}</p>}
-                              <div className="mt-3 flex justify-between text-sm">
-                                <span className="font-medium">{sub.service_charge ? `₹${sub.service_charge}` : '—'}</span>
-                                <span className={`px-2.5 py-0.5 text-xs rounded-full ${
-                                  sub.is_active ?? true ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {sub.is_active ? 'Active' : 'Inactive'}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+          {activeSection === 'admin-emails' && (
+            <div className="max-w-4xl space-y-6">
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-800 mb-6">Manage Admin Emails</h2>
+                <form onSubmit={handleAddEmail} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                    <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="admin@company.com" required className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
                   </div>
-                ))}
-              </div>
-            )
-          ) : activeSection === 'admin-emails' ? (
-            <div className="space-y-8">
-              <div className="bg-white rounded-xl shadow border p-6">
-                <h2 className="text-xl font-semibold mb-6 flex items-center gap-3">
-                  <FaEnvelope className="text-indigo-600" />
-                  Manage Admin Emails
-                </h2>
-
-                <form onSubmit={handleAddEmail} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                      <input
-                        type="email"
-                        value={newEmail}
-                        onChange={(e) => setNewEmail(e.target.value)}
-                        placeholder="admin@company.com"
-                        required
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-                      <select
-                        value={newPriority}
-                        onChange={(e) => setNewPriority(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-                      >
-                        <option value={1}>1 – Highest</option>
-                        <option value={2}>2</option>
-                        <option value={3}>3 – Normal</option>
-                        <option value={4}>4</option>
-                        <option value={5}>5 – Lowest</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                    <select value={newPriority} onChange={(e) => setNewPriority(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                      <option value={1}>1 – Highest</option>
+                      <option value={2}>2</option>
+                      <option value={3}>3 – Normal</option>
+                      <option value={4}>4</option>
+                      <option value={5}>5 – Lowest</option>
+                    </select>
                   </div>
-                  <button
-                    type="submit"
-                    disabled={addingEmail}
-                    className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2"
-                  >
-                    {addingEmail ? 'Adding...' : <><FaPlus size={14} /> Add Email</>}
+                  <button type="submit" disabled={addingEmail} className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 justify-center">
+                    {addingEmail ? 'Adding...' : (<><FaPlus /> Add Email</>)}
                   </button>
                 </form>
               </div>
 
-              <div className="bg-white rounded-xl shadow border p-6">
-                <h3 className="text-lg font-semibold mb-4">Existing Emails</h3>
+              <div className="bg-white rounded-lg shadow-sm">
+                <div className="px-6 py-4 border-b">
+                  <h3 className="text-lg font-semibold text-gray-800">Existing Emails</h3>
+                </div>
                 {loadingEmails ? (
-                  <div className="text-center py-10 text-gray-500">Loading...</div>
+                  <div className="p-8 text-center text-gray-500">Loading...</div>
                 ) : emailsError ? (
-                  <div className="text-center py-10 text-red-600">{emailsError}</div>
+                  <div className="p-8 text-center text-red-600">{emailsError}</div>
                 ) : adminEmails.length === 0 ? (
-                  <div className="text-center py-10 text-gray-600">No emails added yet</div>
+                  <div className="p-8 text-center text-gray-500">No emails added yet</div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="divide-y">
                     {adminEmails.map((item) => (
-                      <div
-                        key={item.id || item.email}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border"
-                      >
+                      <div key={item.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
                         <div>
-                          <p className="font-medium">{item.email}</p>
-                          <p className="text-sm text-gray-500">Priority: {item.priority}</p>
+                          <div className="font-medium text-gray-900">{item.email}</div>
+                          <div className="text-sm text-gray-500">Priority: {item.priority}</div>
                         </div>
-                        <button
-                          onClick={() => item.id && setDeleteEmailId(item.id)}
-                          className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50"
-                        >
+                        <button onClick={() => item.id && setDeleteEmailId(item.id)} className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50">
                           <FaTrashAlt />
                         </button>
                       </div>
@@ -445,75 +396,228 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-          ) : activeSection === 'add-category' ? (
-            <div className="bg-white rounded-xl shadow border p-6">
-              <h2 className="text-xl font-semibold mb-6">Add New Category</h2>
-              <AddCategory onClose={goToDashboard} onSuccess={fetchCategories} />
-            </div>
-          ) : activeSection === 'add-subcategory' ? (
-            <div className="bg-white rounded-xl shadow border p-6">
-              <h2 className="text-xl font-semibold mb-6">Add New Subcategory</h2>
-              <AddSubCategory onClose={goToDashboard} onSuccess={fetchCategories} />
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow border p-6">
-              <h2 className="text-xl font-semibold mb-6">Service Request History</h2>
-              <History />
+          )}
+
+          {activeSection === 'add-category' && (
+            <div className="max-w-3xl">
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-800 mb-6">Add New Category</h2>
+                <AddCategory onSuccess={fetchCategories} />
+              </div>
             </div>
           )}
-        </main>
-      </div>
 
-      {/* Delete Confirmation Modals */}
+          {activeSection === 'add-subcategory' && (
+            <div className="max-w-3xl">
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-800 mb-6">Add New Subcategory</h2>
+                <AddSubCategory onSuccess={fetchCategories} />
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'categories' && (
+            <>
+              {loadingServices ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+                </div>
+              ) : servicesError ? (
+                <div className="bg-white rounded-lg shadow-sm p-8 text-center text-red-600">{servicesError}</div>
+              ) : services.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                  <FaListAlt className="mx-auto text-gray-400 text-5xl mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2">No categories yet</h3>
+                  <p className="text-gray-600 mb-6">Start by adding your first service category</p>
+                  <button onClick={() => handleNavClick('add-category')} className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    <FaPlus className="inline mr-2" /> Add Category
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {services.map((cat) => (
+                    <div key={cat.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                      <div
+                        onClick={() => cat.subcategories?.length > 0 && setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
+                        className={`px-6 py-4 flex items-center gap-4 ${cat.subcategories?.length > 0 ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                      >
+                        <div className="w-12 h-12 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-semibold text-lg flex-shrink-0">
+                          {cat.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-gray-900">{cat.name}</h3>
+                          {cat.description && <p className="text-sm text-gray-600 mt-1">{cat.description}</p>}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="text-sm text-gray-500">Service Charge</div>
+                            <div className="font-medium text-gray-900">{cat.service_charge ? `₹${cat.service_charge}` : '—'}</div>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${cat.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {cat.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                          {cat.subcategories?.length > 0 && (
+                            <button className="text-gray-400 p-2">
+                              {expandedCategory === cat.id ? <FaChevronUp /> : <FaChevronDown />}
+                            </button>
+                          )}
+                          <button onClick={(e) => { e.stopPropagation(); startEditCategory(cat); }} className="text-blue-600 hover:text-blue-800 p-2" title="Edit category">
+                            <FaEdit />
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteCategoryConfirm({ id: cat.id, name: cat.name }); }} className="text-red-600 hover:text-red-800 p-2" title="Delete category">
+                            <FaTrashAlt />
+                          </button>
+                        </div>
+                      </div>
+
+                      {expandedCategory === cat.id && cat.subcategories?.length > 0 && (
+                        <div className="bg-gray-50 divide-y divide-gray-200">
+                          {cat.subcategories.map((sub) => (
+                            <div key={sub.id} className="px-6 py-4 pl-20">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-gray-900">{sub.name}</h4>
+                                  {sub.description && <p className="text-sm text-gray-600 mt-1">{sub.description}</p>}
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {sub.service_charge ? `₹${sub.service_charge}` : '—'}
+                                  </div>
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${sub.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                    {sub.is_active ? 'Active' : 'Inactive'}
+                                  </span>
+
+                                  <button onClick={() => startEditSubCategory(cat.id, sub)} className="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50" title="Edit subcategory">
+                                    <FaEdit size={14} />
+                                  </button>
+
+                                  <button
+                                    onClick={() => setDeleteSubConfirm({ categoryId: cat.id, subId: sub.id, subName: sub.name })}
+                                    className="text-red-600 hover:text-red-800 p-1.5 rounded hover:bg-red-50"
+                                    title="Delete subcategory"
+                                  >
+                                    <FaTrashAlt size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* Delete Category Confirmation */}
       {deleteCategoryConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-xl font-semibold mb-4">Confirm Delete</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h3>
             <p className="text-gray-600 mb-6">
-              Delete category <strong>{deleteCategoryConfirm.name}</strong>?
-              <br />This cannot be undone.
+              Are you sure you want to delete category <strong>{deleteCategoryConfirm.name}</strong>?<br />
+              This action cannot be undone.
             </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteCategoryConfirm(null)}
-                className="px-5 py-2.5 border rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteCategory}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                Delete
-              </button>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setDeleteCategoryConfirm(null)} className="px-5 py-2.5 border rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleDeleteCategory} className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
             </div>
           </div>
         </div>
       )}
 
-      {deleteEmailId !== null && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-xl font-semibold mb-4">Confirm Delete</h3>
+      {/* Delete Subcategory Confirmation */}
+      {deleteSubConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h3>
             <p className="text-gray-600 mb-6">
-              Remove this email from admin notifications?
+              Are you sure you want to delete subcategory <strong>{deleteSubConfirm.subName}</strong>?<br />
+              This action cannot be undone.
             </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteEmailId(null)}
-                className="px-5 py-2.5 border rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  handleDeleteEmail(deleteEmailId);
-                  setDeleteEmailId(null);
-                }}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                Delete
-              </button>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setDeleteSubConfirm(null)} className="px-5 py-2.5 border rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleDeleteSubCategory} className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Category Modal – unchanged */}
+      {editingCategory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Category</h3>
+            <form onSubmit={handleUpdateCategory} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input type="text" value={editCatForm.name} onChange={(e) => setEditCatForm({ ...editCatForm, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea value={editCatForm.description} onChange={(e) => setEditCatForm({ ...editCatForm, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" rows={3} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Service Charge (₹)</label>
+                <input type="text" value={editCatForm.service_charge} onChange={(e) => setEditCatForm({ ...editCatForm, service_charge: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 499" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="cat-active" checked={editCatForm.is_active} onChange={(e) => setEditCatForm({ ...editCatForm, is_active: e.target.checked })} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+                <label htmlFor="cat-active" className="text-sm text-gray-700">Active</label>
+              </div>
+              <div className="flex gap-3 justify-end mt-6">
+                <button type="button" onClick={() => setEditingCategory(null)} className="px-5 py-2.5 border rounded-lg hover:bg-gray-50">Cancel</button>
+                <button type="submit" className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Subcategory Modal – unchanged */}
+      {editingSubCategory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Subcategory</h3>
+            <form onSubmit={handleUpdateSubCategory} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input type="text" value={editSubForm.name} onChange={(e) => setEditSubForm({ ...editSubForm, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea value={editSubForm.description} onChange={(e) => setEditSubForm({ ...editSubForm, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" rows={3} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Service Charge (₹)</label>
+                <input type="text" value={editSubForm.service_charge} onChange={(e) => setEditSubForm({ ...editSubForm, service_charge: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 299" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="sub-active" checked={editSubForm.is_active} onChange={(e) => setEditSubForm({ ...editSubForm, is_active: e.target.checked })} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+                <label htmlFor="sub-active" className="text-sm text-gray-700">Active</label>
+              </div>
+              <div className="flex gap-3 justify-end mt-6">
+                <button type="button" onClick={() => setEditingSubCategory(null)} className="px-5 py-2.5 border rounded-lg hover:bg-gray-50">Cancel</button>
+                <button type="submit" className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Email Confirmation */}
+      {deleteEmailId !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h3>
+            <p className="text-gray-600 mb-6">Remove this email from admin notifications list?</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setDeleteEmailId(null)} className="px-5 py-2.5 border rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={() => { handleDeleteEmail(deleteEmailId); setDeleteEmailId(null); }} className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
             </div>
           </div>
         </div>

@@ -210,8 +210,9 @@ export default function LoginPage() {
 
       showToast("Login successful!", "success");
 
-      setTimeout(() => {
+      setTimeout(async () => {
         if (res.is_admin || res.role === "admin") {
+          await localStorage.setItem("isAdmin", "true");
           navigate("/admin", { replace: true });
         } else {
           navigate("/home", { replace: true });
