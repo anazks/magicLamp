@@ -4,6 +4,7 @@ import bannerImage from '../../assets/logo.png';
 export default function BusinessDetails() {
   const [isVisible, setIsVisible] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,6 +102,34 @@ export default function BusinessDetails() {
     { q: "How can I contact support?", a: "Call +91 94963 43734, email magiclampinstaserve@gmail.com or use the in-app chat support." },
   ];
 
+  const legalSections = [
+    {
+      id: 'terms',
+      title: 'Terms and Conditions',
+      content: `By accessing and using the MagicLamp InstaServe Solutions Pvt. Ltd. website and mobile application, you agree to the following terms:
+      
+1. Users must provide accurate information while registering and placing orders.
+2. Prices, delivery time, and availability may vary based on location and vendor.
+3. MagicLamp InstaServe Solutions Pvt. Ltd. reserves the right to cancel or refuse any order due to incorrect details, unavailability, or unforeseen circumstances.
+4. Delivery delays caused by traffic, weather, or vendor-related issues are not the company's liability.
+5. Any misuse, fraudulent activity, or abusive behavior may lead to account suspension or termination.
+
+These terms may be updated without prior notice.`
+    },
+    {
+      id: 'privacy',
+      title: 'Privacy Policy',
+      content: `MagicLamp InstaServe Solutions Pvt. Ltd. is committed to protecting user privacy.
+      
+1. We collect personal information such as name, phone number, address, and payment details to provide our services.
+2. Collected data is used strictly for order processing, communication, and customer support.
+3. We do not sell or misuse user data. Information is shared only with vendors and delivery partners for order fulfillment or when legally required.
+4. All payments are processed through secure and trusted payment gateways.
+
+By using our platform, you consent to this privacy policy.`
+    }
+  ];
+
   return (
     <div
       ref={containerRef}
@@ -183,6 +212,50 @@ export default function BusinessDetails() {
           </div>
         </section>
 
+        {/* Legal Sections - Terms & Privacy */}
+        <section className="mt-24 pt-16 border-t border-blue-100/40">
+          <h2 className="text-4xl sm:text-5xl font-bold font-cinzel text-center text-slate-800 mb-4 magic-lamp-gradient">
+            Legal Information
+          </h2>
+          <p className="text-center text-slate-600 text-xl mb-12">
+            Terms, conditions and privacy policies
+          </p>
+
+          <div className="max-w-4xl mx-auto space-y-6">
+            {legalSections.map((section) => (
+              <div
+                key={section.id}
+                className="bg-white/80 backdrop-blur-sm border border-blue-100/50 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+              >
+                <button
+                  onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
+                  className="w-full px-8 py-6 text-left flex justify-between items-center hover:bg-blue-50/30 transition-colors"
+                >
+                  <span className="font-semibold text-slate-800 text-xl">
+                    {section.title}
+                  </span>
+                  <span className={`text-blue-600 text-2xl transition-transform duration-300 ${expandedSection === section.id ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
+                </button>
+
+                <div className={`px-8 pb-6 ${expandedSection === section.id ? 'block' : 'hidden'}`}>
+                  <div className="text-slate-700 text-lg leading-relaxed whitespace-pre-line">
+                    {section.content}
+                  </div>
+                  <div className="mt-6 pt-6 border-t border-blue-100/50 text-sm text-slate-500">
+                    Last updated: {new Date().toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* FAQ */}
         <section className="mt-24 pt-16 border-t border-blue-100/40">
           <h2 className="text-4xl sm:text-5xl font-bold font-cinzel text-center text-slate-800 mb-4 magic-lamp-gradient">
@@ -235,7 +308,7 @@ export default function BusinessDetails() {
                   href="mailto:magiclampinstaserve@gmail.com"
                   className="text-blue-700 hover:text-blue-800 font-semibold flex items-center justify-center gap-4 transition-colors"
                 >
-                  {/* <span className="text-3xl">✉️</span> */}
+                  <span className="text-3xl">✉️</span>
                   magiclampinstaserve@gmail.com
                 </a>
               </div>
@@ -256,6 +329,12 @@ export default function BusinessDetails() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Copyright */}
+          <div className="mt-16 text-center text-slate-500 text-sm">
+            <p>© {new Date().getFullYear()} MagicLamp InstaServe Solutions Pvt. Ltd. All rights reserved.</p>
+            <p className="mt-2">Registered under the Companies Act, 2013</p>
           </div>
         </section>
       </div>
