@@ -10,7 +10,7 @@ import Unauthorized from "./Pages/Unauthorized";
 
 // Protected Admin Route Component
 function AdminProtectedRoute() {
-  const { isAdmin, setIsAdmin } = useAuth();   // ← get real admin status from context
+  const { isAdmin } = useAuth();   // ← get real admin status from context
   localStorage.setItem("isAdmin", isAdmin ? "true" : "false");
 
 

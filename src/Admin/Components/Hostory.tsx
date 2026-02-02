@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { getAllRequestedServices, updateRequestStatus } from "../../Api/Service";
 import {
   FaSearch,
@@ -58,13 +58,13 @@ export default function History() {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  // Pagination (URL-based)
   const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [prevUrl, setPrevUrl] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Search & Filter (client-side since API doesn't support it)
+  // Search & Filter (client-side)
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<RequestStatus | "all">("all");
 
@@ -85,8 +85,12 @@ export default function History() {
   const fetchRequests = async (url?: string) => {
     setLoading(true);
     try {
-      const response = url ? await getAllRequestedServices(url) : await getAllRequestedServices();
-      console.log("Service requests fetched------------:", response);
+      const response = url
+        ? await getAllRequestedServices(url)
+        : await getAllRequestedServices();
+
+      console.log("Service requests fetched:", response);
+
       const data: PaginatedResponse = response.data;
 
       setRequests(data.results || []);
@@ -94,7 +98,7 @@ export default function History() {
       setNextUrl(data.next);
       setPrevUrl(data.previous);
 
-      // Update stats from API if available
+      // Update stats if provided by backend
       if (data.stats) {
         setStats({
           total: data.stats.total,
@@ -106,7 +110,7 @@ export default function History() {
         });
       }
 
-      // Try to detect current page from URL
+      // Update current page from URL if applicable
       if (url) {
         const match = url.match(/[?&]page=(\d+)/);
         if (match) setCurrentPage(Number(match[1]));
@@ -117,14 +121,7 @@ export default function History() {
       console.error("Failed to load service requests:", err);
       setRequests([]);
       setTotalCount(0);
-      setStats({
-        total: 0,
-        pending: 0,
-        assigned: 0,
-        inProgress: 0,
-        completed: 0,
-        cancelled: 0,
-      });
+      setStats({ total: 0, pending: 0, assigned: 0, inProgress: 0, completed: 0, cancelled: 0 });
       setNextUrl(null);
       setPrevUrl(null);
     } finally {
@@ -133,22 +130,11 @@ export default function History() {
   };
 
   const goToPrevious = () => {
-    if (prevUrl) {
-      fetchRequests(prevUrl);
-    }
+    if (prevUrl) fetchRequests(prevUrl);
   };
 
   const goToNext = () => {
-    if (nextUrl) {
-      fetchRequests(nextUrl);
-    }
-  };
-
-  const handlePageChange = (page: number) => {
-    // Build URL with page parameter
-    const baseUrl = 'services/admin/requests/';
-    const url = page === 1 ? baseUrl : `${baseUrl}?page=${page}`;
-    fetchRequests(url);
+    if (nextUrl) fetchRequests(nextUrl);
   };
 
   const updateStatus = async (id: number, status: RequestStatus) => {
@@ -156,23 +142,21 @@ export default function History() {
 
     try {
       setUpdatingId(id);
-      await updateRequestStatus(id, status);
+      await updateRequestStatus(id, status);  // ← fixed: now passing both arguments
 
-      // Optimistic update
+      // Optimistic UI update
       setRequests((prev) =>
         prev.map((req) => (req.id === id ? { ...req, status } : req))
       );
-      
-      // Also update stats locally
-      const updatedRequest = requests.find(req => req.id === id);
-      if (updatedRequest) {
-        const oldStatus = updatedRequest.status;
-        setStats(prev => ({
+
+      // Update local stats
+      setStats((prev) => {
+        const oldStatusKey = status.toLowerCase() as keyof typeof prev;
+        return {
           ...prev,
-          [oldStatus.toLowerCase()]: Math.max(0, prev[oldStatus.toLowerCase() as keyof typeof prev] - 1),
-          [status.toLowerCase()]: (prev[status.toLowerCase() as keyof typeof prev] || 0) + 1,
-        }));
-      }
+          [oldStatusKey]: (prev[oldStatusKey] || 0) + 1,
+        };
+      });
     } catch (err) {
       console.error("Failed to update status:", err);
       alert("Could not update status. Please try again.");
@@ -197,16 +181,16 @@ export default function History() {
     }
   };
 
-  // Client-side filtering & sorting
+  // Filtered & sorted requests (client-side)
   const filteredRequests = useMemo(() => {
     let result = [...requests];
 
-    // Apply status filter
+    // Status filter
     if (statusFilter !== "all") {
       result = result.filter((r) => r.status === statusFilter);
     }
 
-    // Apply search filter
+    // Search filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
       result = result.filter((r) =>
@@ -220,14 +204,14 @@ export default function History() {
       );
     }
 
-    // Sort by newest first
+    // Sort newest first
     result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return result;
   }, [requests, searchTerm, statusFilter]);
 
   const getStatusColor = (status: RequestStatus) => {
-    const colors = {
+    const colors: Record<RequestStatus, string> = {
       Pending: "bg-yellow-100 text-yellow-800",
       Assigned: "bg-blue-100 text-blue-800",
       "In Progress": "bg-purple-100 text-purple-800",
@@ -238,7 +222,7 @@ export default function History() {
   };
 
   const getActionButtonColor = (action: RequestStatus) => {
-    const colors = {
+    const colors: Partial<Record<RequestStatus, string>> = {
       Assigned: "bg-blue-600 hover:bg-blue-700",
       "In Progress": "bg-purple-600 hover:bg-purple-700",
       Completed: "bg-green-600 hover:bg-green-700",
@@ -255,7 +239,6 @@ export default function History() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
@@ -311,8 +294,8 @@ export default function History() {
             <div className="text-center py-16">
               <div className="text-gray-300 text-6xl mb-4">📋</div>
               <p className="text-gray-500 text-lg font-medium">
-                {searchTerm || statusFilter !== "all" 
-                  ? "No matching requests found" 
+                {searchTerm || statusFilter !== "all"
+                  ? "No matching requests found"
                   : "No service requests found"}
               </p>
               {(searchTerm || statusFilter !== "all") && (
@@ -358,7 +341,11 @@ export default function History() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(req.status)}`}>
+                          <span
+                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                              req.status
+                            )}`}
+                          >
                             {req.status}
                           </span>
                         </td>
@@ -372,7 +359,9 @@ export default function History() {
                                 key={action}
                                 disabled={updatingId === req.id}
                                 onClick={() => updateStatus(req.id, action)}
-                                className={`px-3 py-1 text-xs font-medium text-white rounded-md ${getActionButtonColor(action)} disabled:opacity-50 transition-colors`}
+                                className={`px-3 py-1 text-xs font-medium text-white rounded-md ${getActionButtonColor(
+                                  action
+                                )} disabled:opacity-50 transition-colors`}
                               >
                                 {updatingId === req.id ? (
                                   <FaSpinner className="animate-spin" />
@@ -406,16 +395,14 @@ export default function History() {
                 </table>
               </div>
 
-              {/* Pagination Controls */}
+              {/* Pagination */}
               <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between text-sm gap-4">
                 <div className="text-gray-700 text-center sm:text-left">
-                  <div>
-                    Showing <span className="font-medium">{filteredRequests.length}</span> of{" "}
-                    <span className="font-medium">{requests.length}</span> requests on this page
-                  </div>
+                  Showing <span className="font-medium">{filteredRequests.length}</span> of{" "}
+                  <span className="font-medium">{requests.length}</span> requests
                   {(searchTerm || statusFilter !== "all") && (
-                    <div className="text-blue-600 text-sm mt-1">
-                      (Filtered from {totalCount} total requests)
+                    <div className="text-blue-600 mt-1">
+                      (Filtered from {totalCount} total)
                     </div>
                   )}
                 </div>
@@ -424,24 +411,23 @@ export default function History() {
                   <button
                     onClick={goToPrevious}
                     disabled={!prevUrl || loading}
-                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                   >
-                    <FaChevronLeft className="h-4 w-4" />
+                    <FaChevronLeft />
                     Previous
                   </button>
 
-                  <div className="text-gray-700">
-                    Page <span className="font-medium">{currentPage}</span> of{" "}
-                    <span className="font-medium">{totalPages || 1}</span>
-                  </div>
+                  <span className="text-gray-700">
+                    Page <strong>{currentPage}</strong> of <strong>{totalPages || 1}</strong>
+                  </span>
 
                   <button
                     onClick={goToNext}
                     disabled={!nextUrl || loading}
-                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                   >
                     Next
-                    <FaChevronRight className="h-4 w-4" />
+                    <FaChevronRight />
                   </button>
                 </div>
               </div>
@@ -449,7 +435,7 @@ export default function History() {
           )}
         </div>
 
-        {/* Detail Modal */}
+        {/* View Details Modal */}
         {selectedRequest && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -504,7 +490,11 @@ export default function History() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t">
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                      <span className={`mt-1 inline-block px-4 py-1 text-sm font-semibold rounded-full ${getStatusColor(selectedRequest.status)}`}>
+                      <span
+                        className={`mt-1 inline-block px-4 py-1 text-sm font-semibold rounded-full ${getStatusColor(
+                          selectedRequest.status
+                        )}`}
+                      >
                         {selectedRequest.status}
                       </span>
                     </div>

@@ -185,7 +185,7 @@ export default function LoginPage() {
         }
 
         // Other failure reasons from backend
-        throw new Error(otpResponse.message || "Failed to send OTP");
+        throw new Error("Failed to send OTP");
       }
 
       // ── Malformed response (neither success true nor false) ────────────
@@ -211,7 +211,8 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const res = await generateOTP({ identifier: email });
-      if (res?.success !== true) {
+      console.log("Resend OTP response:", res);
+      if (res?.data.success !== true) {
         throw new Error( "Failed to resend OTP");
       }
       setCountdown(60);

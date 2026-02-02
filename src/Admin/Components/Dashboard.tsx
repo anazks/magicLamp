@@ -6,7 +6,7 @@ import {
 import AddCategory from './Addcategory';
 import AddSubCategory from './AddSubCategory';
 import Stats from './Stats';
-import History from './Hostory';  // ← note: probably should be './History'
+import History from './Hostory'; // ← change to './History' if that's the correct file name
 import { 
   getAllServiceCategory, 
   deleteCategory, 
@@ -51,7 +51,7 @@ export default function Dashboard() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ── Service Categories + Pagination ────────────────────────────
+  // Service Categories + Pagination
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [servicesError, setServicesError] = useState<string | null>(null);
@@ -112,6 +112,10 @@ export default function Dashboard() {
       setLoadingServices(true);
       setServicesError(null);
 
+      // If your API doesn't support pagination yet → remove arguments:
+      // const res = await getAllServiceCategory();
+      
+      // If it does support page & limit:
       const res = await getAllServiceCategory(page, itemsPerPage);
 
       let categoryData: ServiceItem[] = [];
@@ -566,15 +570,6 @@ export default function Dashboard() {
               <FaEnvelope className="text-lg" /> Admin Emails
             </button>
           </nav>
-
-          {/* <div className="p-4 border-t">
-            <button 
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <FaSignOutAlt className="text-lg" /> Logout
-            </button>
-          </div> */}
         </div>
       </aside>
 
@@ -618,10 +613,10 @@ export default function Dashboard() {
         </div>
 
         <div className="p-4 lg:p-8">
-          {/* ── Default / Opening Screen: Stats ──────────────────────── */}
+          {/* Stats - Default View */}
           {activeSection === 'stats' && <Stats />}
 
-          {/* ── Service Requests ─────────────────────────────────────── */}
+          {/* Service Requests */}
           {activeSection === 'requests' && (
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow-sm">
@@ -633,14 +628,16 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Admin Emails ─────────────────────────────────────────── */}
+          {/* Admin Emails */}
           {activeSection === 'admin-emails' && (
             <div className="max-w-4xl space-y-6">
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-800 mb-6">Manage Admin Emails</h2>
                 <form onSubmit={handleAddEmail} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email Address
+                    </label>
                     <input 
                       type="email" 
                       value={newEmail} 
@@ -651,7 +648,9 @@ export default function Dashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Priority
+                    </label>
                     <select 
                       value={newPriority} 
                       onChange={(e) => setNewPriority(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)} 
@@ -679,7 +678,7 @@ export default function Dashboard() {
                   <h3 className="text-lg font-semibold text-gray-800">Existing Emails</h3>
                 </div>
                 {loadingEmails ? (
-                  <Loader/>
+                  <Loader />
                 ) : emailsError ? (
                   <div className="p-8 text-center text-red-600">{emailsError}</div>
                 ) : adminEmails.length === 0 ? (
@@ -687,7 +686,10 @@ export default function Dashboard() {
                 ) : (
                   <div className="divide-y">
                     {adminEmails.map((item) => (
-                      <div key={item.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                      <div 
+                        key={item.id} 
+                        className="px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+                      >
                         <div>
                           <div className="font-medium text-gray-900">{item.email}</div>
                           <div className="text-sm text-gray-500">Priority: {item.priority}</div>
@@ -706,7 +708,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Add Category ─────────────────────────────────────────── */}
+          {/* Add Category */}
           {activeSection === 'add-category' && (
             <div className="max-w-3xl">
               <div className="bg-white rounded-lg shadow-sm p-6">
@@ -716,7 +718,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Add Subcategory ──────────────────────────────────────── */}
+          {/* Add Subcategory */}
           {activeSection === 'add-subcategory' && (
             <div className="max-w-3xl">
               <div className="bg-white rounded-lg shadow-sm p-6">
@@ -726,12 +728,12 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Categories Management ────────────────────────────────── */}
+          {/* Categories List */}
           {activeSection === 'categories' && (
             <>
               {loadingServices ? (
                 <div className="flex items-center justify-center py-20">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+                  <Loader />
                 </div>
               ) : servicesError ? (
                 <div className="bg-white rounded-lg shadow-sm p-8 text-center text-red-600">
@@ -768,9 +770,13 @@ export default function Dashboard() {
                           <div className="flex items-center gap-4">
                             <div className="text-right">
                               <div className="text-sm text-gray-500">Service Charge</div>
-                              <div className="font-medium text-gray-900">{cat.service_charge ? `₹${cat.service_charge}` : '—'}</div>
+                              <div className="font-medium text-gray-900">
+                                {cat.service_charge ? `₹${cat.service_charge}` : '—'}
+                              </div>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${cat.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              cat.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
                               {cat.is_active ? 'Active' : 'Inactive'}
                             </span>
                             {cat.subcategories?.length > 0 && (
@@ -779,14 +785,20 @@ export default function Dashboard() {
                               </button>
                             )}
                             <button 
-                              onClick={(e) => { e.stopPropagation(); startEditCategory(cat); }} 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                startEditCategory(cat); 
+                              }} 
                               className="text-blue-600 hover:text-blue-800 p-2" 
                               title="Edit category"
                             >
                               <FaEdit />
                             </button>
                             <button 
-                              onClick={(e) => { e.stopPropagation(); setDeleteCategoryConfirm({ id: cat.id, name: cat.name }); }} 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setDeleteCategoryConfirm({ id: cat.id, name: cat.name }); 
+                              }} 
                               className="text-red-600 hover:text-red-800 p-2" 
                               title="Delete category"
                             >
@@ -802,13 +814,17 @@ export default function Dashboard() {
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
                                     <h4 className="font-medium text-gray-900">{sub.name}</h4>
-                                    {sub.description && <p className="text-sm text-gray-600 mt-1">{sub.description}</p>}
+                                    {sub.description && (
+                                      <p className="text-sm text-gray-600 mt-1">{sub.description}</p>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-4">
                                     <div className="text-sm font-medium text-gray-900">
                                       {sub.service_charge ? `₹${sub.service_charge}` : '—'}
                                     </div>
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${sub.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                      sub.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                    }`}>
                                       {sub.is_active ? 'Active' : 'Inactive'}
                                     </span>
 
@@ -821,7 +837,11 @@ export default function Dashboard() {
                                     </button>
 
                                     <button
-                                      onClick={() => setDeleteSubConfirm({ categoryId: cat.id, subId: sub.id, subName: sub.name })}
+                                      onClick={() => setDeleteSubConfirm({
+                                        categoryId: cat.id,
+                                        subId: sub.id,
+                                        subName: sub.name
+                                      })}
                                       className="text-red-600 hover:text-red-800 p-1.5 rounded hover:bg-red-50"
                                       title="Delete subcategory"
                                     >
@@ -845,7 +865,7 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* ── Delete Category Confirmation ──────────────────────────── */}
+      {/* Delete Category Confirmation Modal */}
       {deleteCategoryConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
@@ -856,13 +876,13 @@ export default function Dashboard() {
             </p>
             <div className="flex gap-3 justify-end">
               <button 
-                onClick={() => setDeleteCategoryConfirm(null)} 
+                onClick={() => setDeleteCategoryConfirm(null)}
                 className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 Cancel
               </button>
               <button 
-                onClick={handleDeleteCategory} 
+                onClick={handleDeleteCategory}
                 className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
               >
                 Delete
@@ -872,7 +892,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Delete Subcategory Confirmation ───────────────────────── */}
+      {/* Delete Subcategory Confirmation Modal */}
       {deleteSubConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
@@ -883,13 +903,13 @@ export default function Dashboard() {
             </p>
             <div className="flex gap-3 justify-end">
               <button 
-                onClick={() => setDeleteSubConfirm(null)} 
+                onClick={() => setDeleteSubConfirm(null)}
                 className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 Cancel
               </button>
               <button 
-                onClick={handleDeleteSubCategory} 
+                onClick={handleDeleteSubCategory}
                 className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
               >
                 Delete
@@ -899,7 +919,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Edit Category Modal ───────────────────────────────────── */}
+      {/* Edit Category Modal */}
       {editingCategory && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -943,7 +963,11 @@ export default function Dashboard() {
                   <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
                     {editCatPreview ? (
                       <>
-                        <img src={editCatPreview} alt="Preview" className="w-full h-full object-cover" />
+                        <img 
+                          src={editCatPreview} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover" 
+                        />
                         <button
                           type="button"
                           onClick={handleRemoveCatImage}
@@ -1005,7 +1029,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Edit Subcategory Modal ────────────────────────────────── */}
+      {/* Edit Subcategory Modal */}
       {editingSubCategory && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -1049,7 +1073,11 @@ export default function Dashboard() {
                   <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
                     {editSubPreview ? (
                       <>
-                        <img src={editSubPreview} alt="Preview" className="w-full h-full object-cover" />
+                        <img 
+                          src={editSubPreview} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover" 
+                        />
                         <button
                           type="button"
                           onClick={handleRemoveSubImage}
@@ -1111,7 +1139,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Delete Email Confirmation ────────────────────────────── */}
+      {/* Delete Email Confirmation */}
       {deleteEmailId !== null && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
@@ -1127,7 +1155,10 @@ export default function Dashboard() {
                 Cancel
               </button>
               <button 
-                onClick={() => { handleDeleteEmail(deleteEmailId); setDeleteEmailId(null); }} 
+                onClick={() => { 
+                  handleDeleteEmail(deleteEmailId); 
+                  setDeleteEmailId(null); 
+                }} 
                 className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
               >
                 Delete
