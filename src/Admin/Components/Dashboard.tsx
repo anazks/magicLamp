@@ -6,7 +6,7 @@ import {
 import AddCategory from './Addcategory';
 import AddSubCategory from './AddSubCategory';
 import Stats from './Stats';
-import History from './Hostory'; // ← rename file to History.tsx if possible
+import History from './Hostory'; // rename file to History.tsx when possible
 import { 
   getAllServiceCategory, 
   deleteCategory, 
@@ -51,14 +51,10 @@ export default function Dashboard() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Service Categories + Pagination
+  // Service Categories
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [servicesError, setServicesError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const itemsPerPage = 10;
 
   const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
 
@@ -107,40 +103,26 @@ export default function Dashboard() {
   const [deleteEmailId, setDeleteEmailId] = useState<number | null>(null);
 
   // ── Fetch Categories ───────────────────────────────────────────
-  const fetchCategories = async () => {  // ← removed page param for now
+  const fetchCategories = async () => {
     try {
       setLoadingServices(true);
       setServicesError(null);
 
-      // Temporary fix: call without arguments until API supports pagination
-      const res = await getAllServiceCategory();  // ← no arguments
+      const res = await getAllServiceCategory();
 
       let categoryData: ServiceItem[] = [];
-      let total = 0;
-      let pages = 1;
 
       if (res?.data?.results) {
         categoryData = res.data.results;
-        total = res.data.count || 0;
-        pages = Math.ceil(total / itemsPerPage);
-      } else if (res?.data?.data && res?.data?.total) {
+      } else if (res?.data?.data) {
         categoryData = res.data.data;
-        total = res.data.total || 0;
-        pages = res.data.pages || Math.ceil(total / itemsPerPage);
       } else if (Array.isArray(res?.data)) {
         categoryData = res.data;
-        total = res.data.length;
-        pages = 1;
       } else if (Array.isArray(res)) {
         categoryData = res;
-        total = res.length;
-        pages = 1;
       }
 
       setServices(categoryData);
-      setTotalItems(total);
-      setTotalPages(pages);
-      setCurrentPage(1); // reset to page 1 when refetching without pagination
     } catch (err) {
       console.error('Failed to load categories:', err);
       setServicesError('Failed to load service categories');
@@ -211,9 +193,7 @@ export default function Dashboard() {
     setActiveSection(section);
     setSidebarOpen(false);
     if (section === 'admin-emails') fetchAdminEmails();
-    if (section === 'categories') {
-      fetchCategories();
-    }
+    if (section === 'categories') fetchCategories();
   };
 
   const handleLogout = () => {
@@ -784,9 +764,8 @@ export default function Dashboard() {
                     ))}
                   </div>
 
-                  {/* Simple message instead of broken pagination */}
-                  <div className="text-center text-gray-600 py-4">
-                    Showing all {services.length} categories (pagination coming soon)
+                  <div className="text-center text-gray-600 py-6 border-t">
+                    Showing all {services.length} categories
                   </div>
                 </div>
               )}
