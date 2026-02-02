@@ -181,7 +181,7 @@ export default function Stats() {
                   outerRadius={80}
                   label
                 >
-                  {user_roles_distribution.map(( index) => (
+                  {user_roles_distribution.map((entry, index) => (   // ← fixed: added entry, index
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

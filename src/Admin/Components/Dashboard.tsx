@@ -6,7 +6,7 @@ import {
 import AddCategory from './Addcategory';
 import AddSubCategory from './AddSubCategory';
 import Stats from './Stats';
-import History from './Hostory'; // ← change to './History' if that's the correct file name
+import History from './Hostory'; // ← rename file to History.tsx if possible
 import { 
   getAllServiceCategory, 
   deleteCategory, 
@@ -107,16 +107,13 @@ export default function Dashboard() {
   const [deleteEmailId, setDeleteEmailId] = useState<number | null>(null);
 
   // ── Fetch Categories ───────────────────────────────────────────
-  const fetchCategories = async (page = currentPage) => {
+  const fetchCategories = async () => {  // ← removed page param for now
     try {
       setLoadingServices(true);
       setServicesError(null);
 
-      // If your API doesn't support pagination yet → remove arguments:
-      // const res = await getAllServiceCategory();
-      
-      // If it does support page & limit:
-      const res = await getAllServiceCategory(page, itemsPerPage);
+      // Temporary fix: call without arguments until API supports pagination
+      const res = await getAllServiceCategory();  // ← no arguments
 
       let categoryData: ServiceItem[] = [];
       let total = 0;
@@ -143,7 +140,7 @@ export default function Dashboard() {
       setServices(categoryData);
       setTotalItems(total);
       setTotalPages(pages);
-      setCurrentPage(page);
+      setCurrentPage(1); // reset to page 1 when refetching without pagination
     } catch (err) {
       console.error('Failed to load categories:', err);
       setServicesError('Failed to load service categories');
@@ -169,7 +166,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (activeSection === 'categories') {
-      fetchCategories(1);
+      fetchCategories();
     }
   }, [activeSection]);
 
@@ -209,79 +206,13 @@ export default function Dashboard() {
     }
   }, [editingSubCategory]);
 
-  // ── Pagination Controls ────────────────────────────────────────
-  const handlePageChange = (newPage: number) => {
-    if (newPage < 1 || newPage > totalPages) return;
-    setCurrentPage(newPage);
-    fetchCategories(newPage);
-  };
-
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-
-    const pages: JSX.Element[] = [];
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <button
-          key={i}
-          onClick={() => handlePageChange(i)}
-          className={`px-3 py-1.5 rounded text-sm font-medium min-w-[2.5rem] ${
-            currentPage === i
-              ? 'bg-indigo-600 text-white'
-              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          {i}
-        </button>
-      );
-    }
-
-    return (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-4 border-t border-gray-200">
-        <div className="text-sm text-gray-600">
-          Showing {services.length} of {totalItems} categories
-          {totalItems > 0 && ` • Page ${currentPage} of ${totalPages}`}
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap justify-center">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            Previous
-          </button>
-
-          {pages}
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    );
-  };
-
   // ── Navigation ─────────────────────────────────────────────────
   const handleNavClick = (section: typeof activeSection) => {
     setActiveSection(section);
     setSidebarOpen(false);
     if (section === 'admin-emails') fetchAdminEmails();
     if (section === 'categories') {
-      setCurrentPage(1);
-      fetchCategories(1);
+      fetchCategories();
     }
   };
 
@@ -303,7 +234,7 @@ export default function Dashboard() {
       await deleteCategory(deleteCategoryConfirm.id);
       alert(`"${deleteCategoryConfirm.name}" deleted successfully`);
       setDeleteCategoryConfirm(null);
-      fetchCategories(currentPage);
+      fetchCategories();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to delete category');
     }
@@ -315,7 +246,7 @@ export default function Dashboard() {
       await deleteSubCategory(deleteSubConfirm.subId);
       alert(`"${deleteSubConfirm.subName}" deleted successfully`);
       setDeleteSubConfirm(null);
-      fetchCategories(currentPage);
+      fetchCategories();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to delete subcategory');
     }
@@ -381,7 +312,7 @@ export default function Dashboard() {
 
       alert('Category updated successfully');
       setEditingCategory(null);
-      fetchCategories(currentPage);
+      fetchCategories();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to update category');
     }
@@ -447,7 +378,7 @@ export default function Dashboard() {
 
       alert('Subcategory updated successfully');
       setEditingSubCategory(null);
-      fetchCategories(currentPage);
+      fetchCategories();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to update subcategory');
     }
@@ -613,10 +544,10 @@ export default function Dashboard() {
         </div>
 
         <div className="p-4 lg:p-8">
-          {/* Stats - Default View */}
+          {/* ── Stats ──────────────────────── */}
           {activeSection === 'stats' && <Stats />}
 
-          {/* Service Requests */}
+          {/* ── Service Requests ─────────────────────────────────────── */}
           {activeSection === 'requests' && (
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow-sm">
@@ -628,16 +559,14 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Admin Emails */}
+          {/* ── Admin Emails ─────────────────────────────────────────── */}
           {activeSection === 'admin-emails' && (
             <div className="max-w-4xl space-y-6">
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-800 mb-6">Manage Admin Emails</h2>
                 <form onSubmit={handleAddEmail} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
                     <input 
                       type="email" 
                       value={newEmail} 
@@ -648,9 +577,7 @@ export default function Dashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Priority
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                     <select 
                       value={newPriority} 
                       onChange={(e) => setNewPriority(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)} 
@@ -708,27 +635,27 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Add Category */}
+          {/* ── Add Category ─────────────────────────────────────────── */}
           {activeSection === 'add-category' && (
             <div className="max-w-3xl">
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-800 mb-6">Add New Category</h2>
-                <AddCategory onSuccess={() => fetchCategories(currentPage)} />
+                <AddCategory onSuccess={fetchCategories} />
               </div>
             </div>
           )}
 
-          {/* Add Subcategory */}
+          {/* ── Add Subcategory ──────────────────────────────────────── */}
           {activeSection === 'add-subcategory' && (
             <div className="max-w-3xl">
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-800 mb-6">Add New Subcategory</h2>
-                <AddSubCategory onSuccess={() => fetchCategories(currentPage)} />
+                <AddSubCategory onSuccess={fetchCategories} />
               </div>
             </div>
           )}
 
-          {/* Categories List */}
+          {/* ── Categories Management ────────────────────────────────── */}
           {activeSection === 'categories' && (
             <>
               {loadingServices ? (
@@ -857,7 +784,10 @@ export default function Dashboard() {
                     ))}
                   </div>
 
-                  {renderPagination()}
+                  {/* Simple message instead of broken pagination */}
+                  <div className="text-center text-gray-600 py-4">
+                    Showing all {services.length} categories (pagination coming soon)
+                  </div>
                 </div>
               )}
             </>
@@ -865,7 +795,7 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* Delete Category Confirmation Modal */}
+      {/* Delete Category Confirmation */}
       {deleteCategoryConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
@@ -892,7 +822,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Delete Subcategory Confirmation Modal */}
+      {/* Delete Subcategory Confirmation */}
       {deleteSubConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
@@ -963,11 +893,7 @@ export default function Dashboard() {
                   <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
                     {editCatPreview ? (
                       <>
-                        <img 
-                          src={editCatPreview} 
-                          alt="Preview" 
-                          className="w-full h-full object-cover" 
-                        />
+                        <img src={editCatPreview} alt="Preview" className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={handleRemoveCatImage}
@@ -1073,11 +999,7 @@ export default function Dashboard() {
                   <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
                     {editSubPreview ? (
                       <>
-                        <img 
-                          src={editSubPreview} 
-                          alt="Preview" 
-                          className="w-full h-full object-cover" 
-                        />
+                        <img src={editSubPreview} alt="Preview" className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={handleRemoveSubImage}
