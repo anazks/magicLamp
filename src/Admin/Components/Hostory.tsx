@@ -1,6 +1,14 @@
 import { useEffect, useState, useMemo } from "react";
 import { getAllRequestedServices, updateRequestStatus } from "../../Api/Service";
-import { FaSearch, FaFilter, FaMapMarkerAlt, FaEye, FaSpinner } from "react-icons/fa";
+import {
+  FaSearch,
+  FaFilter,
+  FaMapMarkerAlt,
+  FaEye,
+  FaSpinner,
+  FaChevronLeft,
+  FaChevronRight,
+} from "react-icons/fa";
 import Loader from "../../Component/Loader/Loader";
 
 /* ───────────────── TYPES ───────────────── */
@@ -28,38 +36,119 @@ interface ServiceRequest {
   updated_at?: string;
 }
 
+interface PaginatedResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ServiceRequest[];
+  stats?: {
+    total: number;
+    pending: number;
+    assigned: number;
+    in_progress: number;
+    completed: number;
+    cancelled: number;
+  };
+}
+
 /* ───────────────── MAIN COMPONENT ───────────────── */
 export default function History() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
-  
-  // Search & Filter states
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [prevUrl, setPrevUrl] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Search & Filter (client-side since API doesn't support it)
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<RequestStatus | "all">("all");
 
+  // Stats from API
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    assigned: 0,
+    inProgress: 0,
+    completed: 0,
+    cancelled: 0,
+  });
+
   useEffect(() => {
-    fetchData();
+    fetchRequests();
   }, []);
 
-  const fetchData = async () => {
+  const fetchRequests = async (url?: string) => {
     setLoading(true);
     try {
-      const res = await getAllRequestedServices();
-      let data: ServiceRequest[] = [];
+      const response = url ? await getAllRequestedServices(url) : await getAllRequestedServices();
+      console.log("Service requests fetched------------:", response);
+      const data: PaginatedResponse = response.data;
 
-      if (res?.data?.results) data = res.data.results;
-      else if (res?.data && Array.isArray(res.data)) data = res.data;
-      else if (Array.isArray(res)) data = res;
+      setRequests(data.results || []);
+      setTotalCount(data.count || 0);
+      setNextUrl(data.next);
+      setPrevUrl(data.previous);
 
-      setRequests(data);
+      // Update stats from API if available
+      if (data.stats) {
+        setStats({
+          total: data.stats.total,
+          pending: data.stats.pending,
+          assigned: data.stats.assigned,
+          inProgress: data.stats.in_progress,
+          completed: data.stats.completed,
+          cancelled: data.stats.cancelled,
+        });
+      }
+
+      // Try to detect current page from URL
+      if (url) {
+        const match = url.match(/[?&]page=(\d+)/);
+        if (match) setCurrentPage(Number(match[1]));
+      } else {
+        setCurrentPage(1);
+      }
     } catch (err) {
-      console.error("Failed to fetch requests:", err);
+      console.error("Failed to load service requests:", err);
       setRequests([]);
+      setTotalCount(0);
+      setStats({
+        total: 0,
+        pending: 0,
+        assigned: 0,
+        inProgress: 0,
+        completed: 0,
+        cancelled: 0,
+      });
+      setNextUrl(null);
+      setPrevUrl(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const goToPrevious = () => {
+    if (prevUrl) {
+      fetchRequests(prevUrl);
+    }
+  };
+
+  const goToNext = () => {
+    if (nextUrl) {
+      fetchRequests(nextUrl);
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    // Build URL with page parameter
+    const baseUrl = 'services/admin/requests/';
+    const url = page === 1 ? baseUrl : `${baseUrl}?page=${page}`;
+    fetchRequests(url);
   };
 
   const updateStatus = async (id: number, status: RequestStatus) => {
@@ -68,12 +157,25 @@ export default function History() {
     try {
       setUpdatingId(id);
       await updateRequestStatus(id, status);
+
+      // Optimistic update
       setRequests((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status } : r))
+        prev.map((req) => (req.id === id ? { ...req, status } : req))
       );
+      
+      // Also update stats locally
+      const updatedRequest = requests.find(req => req.id === id);
+      if (updatedRequest) {
+        const oldStatus = updatedRequest.status;
+        setStats(prev => ({
+          ...prev,
+          [oldStatus.toLowerCase()]: Math.max(0, prev[oldStatus.toLowerCase() as keyof typeof prev] - 1),
+          [status.toLowerCase()]: (prev[status.toLowerCase() as keyof typeof prev] || 0) + 1,
+        }));
+      }
     } catch (err) {
-      console.error("Status update failed:", err);
-      alert("Failed to update status. Please try again.");
+      console.error("Failed to update status:", err);
+      alert("Could not update status. Please try again.");
     } finally {
       setUpdatingId(null);
     }
@@ -95,123 +197,96 @@ export default function History() {
     }
   };
 
-  // Filtered requests
+  // Client-side filtering & sorting
   const filteredRequests = useMemo(() => {
     let result = [...requests];
 
+    // Apply status filter
     if (statusFilter !== "all") {
-      result = result.filter((req) => req.status === statusFilter);
+      result = result.filter((r) => r.status === statusFilter);
     }
 
+    // Apply search filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
-      result = result.filter((req) =>
-        req.request_id.toLowerCase().includes(term) ||
-        req.customer_name.toLowerCase().includes(term) ||
-        req.mobile_number.includes(term) ||
-        req.category_name.toLowerCase().includes(term) ||
-        (req.subcategory_name?.toLowerCase().includes(term) ?? false) ||
-        (req.service_details?.description?.toLowerCase().includes(term) ?? false) ||
-        req.address.toLowerCase().includes(term)
+      result = result.filter((r) =>
+        r.request_id.toLowerCase().includes(term) ||
+        r.customer_name.toLowerCase().includes(term) ||
+        r.mobile_number.includes(term) ||
+        r.category_name.toLowerCase().includes(term) ||
+        (r.subcategory_name?.toLowerCase().includes(term) ?? false) ||
+        (r.service_details?.description?.toLowerCase().includes(term) ?? false) ||
+        r.address.toLowerCase().includes(term)
       );
     }
 
-    // Sort by latest first
+    // Sort by newest first
     result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return result;
   }, [requests, searchTerm, statusFilter]);
 
-  // Statistics
-  const stats = useMemo(() => {
-    return {
-      total: requests.length,
-      pending: requests.filter(r => r.status === "Pending").length,
-      assigned: requests.filter(r => r.status === "Assigned").length,
-      inProgress: requests.filter(r => r.status === "In Progress").length,
-      completed: requests.filter(r => r.status === "Completed").length,
-      cancelled: requests.filter(r => r.status === "Cancelled").length,
-    };
-  }, [requests]);
-
-  if (loading) {
-    return (
-      <Loader/>
-    );
-  }
-
   const getStatusColor = (status: RequestStatus) => {
-    switch (status) {
-      case "Pending": return "bg-yellow-100 text-yellow-800";
-      case "Assigned": return "bg-blue-100 text-blue-800";
-      case "In Progress": return "bg-purple-100 text-purple-800";
-      case "Completed": return "bg-green-100 text-green-800";
-      case "Cancelled": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
+    const colors = {
+      Pending: "bg-yellow-100 text-yellow-800",
+      Assigned: "bg-blue-100 text-blue-800",
+      "In Progress": "bg-purple-100 text-purple-800",
+      Completed: "bg-green-100 text-green-800",
+      Cancelled: "bg-red-100 text-red-800",
+    };
+    return colors[status] || "bg-gray-100 text-gray-800";
   };
 
   const getActionButtonColor = (action: RequestStatus) => {
-    switch (action) {
-      case "Assigned": return "bg-blue-600 hover:bg-blue-700";
-      case "In Progress": return "bg-purple-600 hover:bg-purple-700";
-      case "Completed": return "bg-green-600 hover:bg-green-700";
-      case "Cancelled": return "bg-red-600 hover:bg-red-700";
-      default: return "bg-gray-600 hover:bg-gray-700";
-    }
+    const colors = {
+      Assigned: "bg-blue-600 hover:bg-blue-700",
+      "In Progress": "bg-purple-600 hover:bg-purple-700",
+      Completed: "bg-green-600 hover:bg-green-700",
+      Cancelled: "bg-red-600 hover:bg-red-700",
+    };
+    return colors[action] || "bg-gray-600 hover:bg-gray-700";
   };
+
+  const pageSize = 10;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  if (loading) return <Loader />;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
+      <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* Stats Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500">Total</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500">Pending</p>
-            <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500">Assigned</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.assigned}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500">In Progress</p>
-            <p className="text-2xl font-bold text-purple-600">{stats.inProgress}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500">Completed</p>
-            <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500">Cancelled</p>
-            <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
-          </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[
+            { label: "Total", value: stats.total, color: "text-gray-900" },
+            { label: "Pending", value: stats.pending, color: "text-yellow-600" },
+            { label: "Assigned", value: stats.assigned, color: "text-blue-600" },
+            { label: "In Progress", value: stats.inProgress, color: "text-purple-600" },
+            { label: "Completed", value: stats.completed, color: "text-green-600" },
+            { label: "Cancelled", value: stats.cancelled, color: "text-red-600" },
+          ].map((item) => (
+            <div key={item.label} className="bg-white rounded-lg shadow p-4">
+              <p className="text-sm text-gray-500">{item.label}</p>
+              <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Search and Filter Bar */}
-        <div className="bg-white rounded-lg shadow mb-6 p-4">
+        {/* Search + Filter */}
+        <div className="bg-white rounded-lg shadow p-4">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                  <FaSearch className="text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search requests..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+            <div className="flex-1 relative">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by ID, name, phone, service, address..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
-            
+
             <div className="flex items-center gap-2">
               <FaFilter className="text-gray-500" />
               <select
@@ -230,212 +305,234 @@ export default function History() {
           </div>
         </div>
 
-        {/* Requests Table */}
+        {/* Table + Pagination */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {filteredRequests.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-gray-400 text-5xl mb-4">📋</div>
-              <p className="text-gray-500 text-lg">
-                {requests.length === 0
-                  ? "No service requests found"
-                  : "No requests match your filters"}
+            <div className="text-center py-16">
+              <div className="text-gray-300 text-6xl mb-4">📋</div>
+              <p className="text-gray-500 text-lg font-medium">
+                {searchTerm || statusFilter !== "all" 
+                  ? "No matching requests found" 
+                  : "No service requests found"}
               </p>
+              {(searchTerm || statusFilter !== "all") && (
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setStatusFilter("all");
+                  }}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Service
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredRequests.map((req) => (
-                    <tr key={req.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {req.request_id}
-                        </div>
-                      </td>
-                      
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {req.customer_name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {req.mobile_number}
-                          </div>
-                        </div>
-                      </td>
-                      
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {req.category_name}
-                          </div>
-                          {req.subcategory_name && (
-                            <div className="text-sm text-gray-500">
-                              {req.subcategory_name}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(req.status)}`}>
-                          {req.status}
-                        </span>
-                      </td>
-                      
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(req.created_at).toLocaleDateString()}
-                      </td>
-                      
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-2">
-                          {availableActions(req.status).map((action) => (
-                            <button
-                              key={action}
-                              disabled={updatingId === req.id}
-                              onClick={() => updateStatus(req.id, action)}
-                              className={`px-3 py-1 text-xs font-medium text-white rounded ${getActionButtonColor(action)} disabled:opacity-50`}
-                            >
-                              {updatingId === req.id ? (
-                                <FaSpinner className="animate-spin" />
-                              ) : (
-                                action
-                              )}
-                            </button>
-                          ))}
-                          
-                          <button
-                            onClick={() => setSelectedRequest(req)}
-                            className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300 flex items-center gap-1"
-                          >
-                            <FaEye /> View
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              const mapUrl = `https://www.google.com/maps?q=${req.latitude},${req.longitude}`;
-                              window.open(mapUrl, '_blank');
-                            }}
-                            className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded hover:bg-blue-200 flex items-center gap-1"
-                          >
-                            <FaMapMarkerAlt /> Map
-                          </button>
-                        </div>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredRequests.map((req) => (
+                      <tr key={req.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{req.request_id}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{req.customer_name}</div>
+                          <div className="text-sm text-gray-500">{req.mobile_number}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{req.category_name}</div>
+                          {req.subcategory_name && (
+                            <div className="text-sm text-gray-500">{req.subcategory_name}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(req.status)}`}>
+                            {req.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(req.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm font-medium">
+                          <div className="flex flex-wrap gap-2 justify-end">
+                            {availableActions(req.status).map((action) => (
+                              <button
+                                key={action}
+                                disabled={updatingId === req.id}
+                                onClick={() => updateStatus(req.id, action)}
+                                className={`px-3 py-1 text-xs font-medium text-white rounded-md ${getActionButtonColor(action)} disabled:opacity-50 transition-colors`}
+                              >
+                                {updatingId === req.id ? (
+                                  <FaSpinner className="animate-spin" />
+                                ) : (
+                                  action
+                                )}
+                              </button>
+                            ))}
+
+                            <button
+                              onClick={() => setSelectedRequest(req)}
+                              className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 flex items-center gap-1 transition-colors"
+                            >
+                              <FaEye /> View
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                const mapUrl = `https://www.google.com/maps?q=${req.latitude},${req.longitude}`;
+                                window.open(mapUrl, "_blank", "noopener,noreferrer");
+                              }}
+                              className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center gap-1 transition-colors"
+                            >
+                              <FaMapMarkerAlt /> Map
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between text-sm gap-4">
+                <div className="text-gray-700 text-center sm:text-left">
+                  <div>
+                    Showing <span className="font-medium">{filteredRequests.length}</span> of{" "}
+                    <span className="font-medium">{requests.length}</span> requests on this page
+                  </div>
+                  {(searchTerm || statusFilter !== "all") && (
+                    <div className="text-blue-600 text-sm mt-1">
+                      (Filtered from {totalCount} total requests)
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={goToPrevious}
+                    disabled={!prevUrl || loading}
+                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                  >
+                    <FaChevronLeft className="h-4 w-4" />
+                    Previous
+                  </button>
+
+                  <div className="text-gray-700">
+                    Page <span className="font-medium">{currentPage}</span> of{" "}
+                    <span className="font-medium">{totalPages || 1}</span>
+                  </div>
+
+                  <button
+                    onClick={goToNext}
+                    disabled={!nextUrl || loading}
+                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                  >
+                    Next
+                    <FaChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
 
-        {/* Request Details Modal */}
+        {/* Detail Modal */}
         {selectedRequest && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
-                <div className="flex justify-between items-start mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Request Details</h2>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Service Request Details</h2>
                   <button
                     onClick={() => setSelectedRequest(null)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
                   >
-                    ✕
+                    ×
                   </button>
                 </div>
-                
-                <div className="space-y-4">
+
+                <div className="space-y-5">
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Request ID</h3>
-                    <p className="mt-1 text-gray-900">{selectedRequest.request_id}</p>
+                    <p className="mt-1 font-medium">{selectedRequest.request_id}</p>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500">Customer Name</h3>
-                      <p className="mt-1 text-gray-900">{selectedRequest.customer_name}</p>
+                      <h3 className="text-sm font-medium text-gray-500">Customer</h3>
+                      <p className="mt-1">{selectedRequest.customer_name}</p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500">Mobile Number</h3>
-                      <p className="mt-1 text-gray-900">{selectedRequest.mobile_number}</p>
+                      <h3 className="text-sm font-medium text-gray-500">Phone</h3>
+                      <p className="mt-1">{selectedRequest.mobile_number}</p>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Service</h3>
-                    <p className="mt-1 text-gray-900">
+                    <p className="mt-1">
                       {selectedRequest.category_name}
-                      {selectedRequest.subcategory_name && ` › ${selectedRequest.subcategory_name}`}
+                      {selectedRequest.subcategory_name && ` → ${selectedRequest.subcategory_name}`}
                     </p>
                   </div>
-                  
+
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Address</h3>
-                    <p className="mt-1 text-gray-900 whitespace-pre-line">{selectedRequest.address}</p>
+                    <p className="mt-1 whitespace-pre-line">{selectedRequest.address}</p>
                   </div>
-                  
+
                   {selectedRequest.service_details?.description && (
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Description</h3>
-                      <p className="mt-1 text-gray-900">{selectedRequest.service_details.description}</p>
+                      <p className="mt-1 whitespace-pre-line">{selectedRequest.service_details.description}</p>
                     </div>
                   )}
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t">
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                      <span className={`mt-1 inline-block px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedRequest.status)}`}>
+                      <span className={`mt-1 inline-block px-4 py-1 text-sm font-semibold rounded-full ${getStatusColor(selectedRequest.status)}`}>
                         {selectedRequest.status}
                       </span>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500">Created Date</h3>
-                      <p className="mt-1 text-gray-900">
-                        {new Date(selectedRequest.created_at).toLocaleString()}
-                      </p>
+                      <h3 className="text-sm font-medium text-gray-500">Created</h3>
+                      <p className="mt-1">{new Date(selectedRequest.created_at).toLocaleString()}</p>
                     </div>
                   </div>
-                  
-                  <div className="pt-4 border-t">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Update Status</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {availableActions(selectedRequest.status).map((action) => (
-                        <button
-                          key={action}
-                          onClick={() => {
-                            updateStatus(selectedRequest.id, action);
-                            setSelectedRequest(null);
-                          }}
-                          className={`px-4 py-2 text-sm font-medium text-white rounded ${getActionButtonColor(action)}`}
-                        >
-                          Mark as {action}
-                        </button>
-                      ))}
+
+                  {availableActions(selectedRequest.status).length > 0 && (
+                    <div className="pt-4 border-t">
+                      <h3 className="text-sm font-medium text-gray-500 mb-3">Update Status</h3>
+                      <div className="flex flex-wrap gap-3">
+                        {availableActions(selectedRequest.status).map((action) => (
+                          <button
+                            key={action}
+                            onClick={() => {
+                              updateStatus(selectedRequest.id, action);
+                              setSelectedRequest(null);
+                            }}
+                            className={`px-5 py-2 text-white font-medium rounded-md ${getActionButtonColor(action)}`}
+                          >
+                            Mark as {action}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -64,11 +64,19 @@ export const deleteCategory = async (categoryId: number) => {
         }
 }
 
-export const getAllRequestedServices = async () => {
+export const getAllRequestedServices = async (url:any) => {
     try {
-        const response = await Axios.get('services/admin/requests/')
-        console.log('Fetched requested services:', response)
-        return response 
+        if(url){
+            console.log('Fetching requested services with URL:', url)
+            const response = await Axios.get(url)
+            console.log('Fetched requested services with URL:', response)
+            return response
+        }else{
+            const response = await Axios.get('services/admin/requests/')
+            console.log('Fetched requested services++++++++++++++:', response)
+            return response 
+        }
+       
     } catch (error) {
         console.error('Error fetching requested services:', error)
         throw error
@@ -129,6 +137,17 @@ export const deleteSubCategory = async (subCategoryId: number) => {
         return response
     } catch (error) {
         console.error('Error deleting sub-category:', error)
+        throw error
+    }
+}
+
+export const DashboardStats = async () => {
+    try {
+        const response = await Axios.get('services/admin/dashboard-analytics/')
+        console.log('Fetched dashboard stats:', response)
+        return response.data
+    } catch (error) {
+        console.error('Error fetching dashboard stats:', error)
         throw error
     }
 }

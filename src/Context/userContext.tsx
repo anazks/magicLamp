@@ -25,7 +25,8 @@ interface AuthContextType {
   user: any;
   setUser: Dispatch<SetStateAction<any>>;
   isAdmin: boolean;
-  setIsAdmin: Dispatch<SetStateAction<boolean>>;
+  setIsAdmin: (value: boolean) => void;
+  logout: () => void;
 }
 
 interface AuthProviderProps {
@@ -39,53 +40,79 @@ interface AuthProviderProps {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /* =========================
+   HELPERS
+========================= */
+
+const decryptToken = (): string | null => {
+  const encrypted = localStorage.getItem("token");
+
+  if (!encrypted) return null;
+
+  try {
+    const bytes = CryptoJS.AES.decrypt(encrypted, SECRET_KEY);
+    return bytes.toString(CryptoJS.enc.Utf8) || null;
+  } catch {
+    return null;
+  }
+};
+
+const getStoredAdmin = (): boolean => {
+  return localStorage.getItem("isAdmin") === "true";
+};
+
+/* =========================
    PROVIDER
 ========================= */
 
 const AuthProvider = ({ children }: AuthProviderProps) => {
-  /* ---------- Helpers ---------- */
-
-  const getDecryptedToken = (): string | null => {
-    if (typeof window === "undefined") return null;
-
-    const encryptedToken = localStorage.getItem("token");
-    if (!encryptedToken) return null;
-
-    try {
-      const bytes = CryptoJS.AES.decrypt(encryptedToken, SECRET_KEY);
-      const decryptedToken = bytes.toString(CryptoJS.enc.Utf8);
-      return decryptedToken || null;
-    } catch (error) {
-      console.error("Token decryption failed:", error);
-      return null;
-    }
-  };
 
   /* ---------- State ---------- */
 
-  const [token, setTokenState] = useState<string | null>(getDecryptedToken);
+  const [token, setTokenState] = useState<string | null>(decryptToken);
   const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [isAdmin, setIsAdminState] = useState<boolean>(getStoredAdmin);
 
   /* ---------- Token Setter ---------- */
 
   const setToken = (newToken: string | null) => {
-    if (typeof window === "undefined") return;
 
     if (newToken) {
       const encrypted = CryptoJS.AES.encrypt(
         newToken,
         SECRET_KEY
       ).toString();
+
       localStorage.setItem("token", encrypted);
+      setTokenState(newToken);
     } else {
       localStorage.removeItem("token");
+      setTokenState(null);
     }
-
-    setTokenState(newToken);
   };
 
-  /* ---------- Axios Auth Header ---------- */
+  /* ---------- Admin Setter ---------- */
+
+  const setIsAdmin = (value: boolean) => {
+    localStorage.setItem("isAdmin", value.toString());
+    setIsAdminState(value);
+  };
+
+  /* ---------- Logout (VERY IMPORTANT) ---------- */
+
+  const logout = () => {
+    localStorage.clear();
+
+    setTokenState(null);
+    setUser(null);
+    setIsAdminState(false);
+
+    delete axios.defaults.headers.common.Authorization;
+
+    // Optional redirect
+    window.location.href = "/login";
+  };
+
+  /* ---------- Axios Header ---------- */
 
   useEffect(() => {
     if (token) {
@@ -95,7 +122,7 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, [token]);
 
-  /* ---------- Memoized Context ---------- */
+  /* ---------- Memo ---------- */
 
   const contextValue = useMemo<AuthContextType>(
     () => ({
@@ -105,6 +132,7 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser,
       isAdmin,
       setIsAdmin,
+      logout,
     }),
     [token, user, isAdmin]
   );
@@ -122,9 +150,11 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
+
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth must be used within AuthProvider");
   }
+
   return context;
 };
 

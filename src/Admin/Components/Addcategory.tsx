@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ServiceCategory } from '../../Api/Service'; // Adjust path to your actual API service
+import { ServiceCategory } from '../../Api/Service'; // Adjust path
 
 interface AddCategoryProps {
   onClose?: () => void;
@@ -12,6 +12,7 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
     description: '',
     service_charge: '',
     is_active: true,
+    order: '0',           // ← new field (string for input, converted later)
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -25,11 +26,17 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
+
     if (type === 'checkbox') {
       setFormData((prev) => ({
         ...prev,
         [name]: (e.target as HTMLInputElement).checked,
       }));
+    } else if (name === 'order') {
+      // Allow only non-negative integers
+      if (value === '' || /^\d+$/.test(value)) {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+      }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -42,12 +49,11 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Basic client-side validation
       if (!file.type.startsWith('image/')) {
         setErrors((prev) => ({ ...prev, image: 'Please select a valid image file' }));
         return;
       }
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
         setErrors((prev) => ({ ...prev, image: 'Image size should be less than 5MB' }));
         return;
       }
@@ -55,7 +61,6 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
       setImageFile(file);
       setPreviewUrl(URL.createObjectURL(file));
 
-      // Clear any previous image error
       setErrors((prev) => {
         const { image, ...rest } = prev;
         return rest;
@@ -81,6 +86,14 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
       const charge = Number(formData.service_charge);
       if (isNaN(charge) || charge < 0) {
         newErrors.service_charge = 'Please enter a valid non-negative amount';
+      }
+    }
+
+    // Validate order field
+    if (formData.order !== '') {
+      const orderNum = Number(formData.order);
+      if (!Number.isInteger(orderNum) || orderNum < 0) {
+        newErrors.order = 'Display order must be a non-negative whole number';
       }
     }
 
@@ -112,20 +125,16 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
       }
       submitData.append('is_active', formData.is_active.toString());
 
+      // ── New field ───────────────────────────────────────
+      if (formData.order !== '') {
+        submitData.append('order', formData.order);   // or 'display_order', 'position', etc.
+      }
+
       if (imageFile) {
         submitData.append('image', imageFile);
       }
 
-      // ────────────────────────────────────────────────
-      //               REAL API CALL
-      // ────────────────────────────────────────────────
-      // Most common pattern: axios instance .post()
-      const response = await ServiceCategory( submitData);
-
-      // Alternative patterns (uncomment if your API is structured differently):
-      // const response = await ServiceCategory.post('/api/categories/', submitData, { ... });
-      // const response = await ServiceCategory.create(submitData);
-      // const response = await ServiceCategory.categories.create(submitData);
+      const response = await ServiceCategory(submitData);
 
       const createdCategory = response.data || response;
 
@@ -139,9 +148,8 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
       let message = 'Failed to add category. Please try again.';
 
       if (error.response) {
-        // 403 → most likely auth/permission issue
         if (error.response.status === 403) {
-          message = 'Permission denied (403). You may need admin access or to log in again.';
+          message = 'Permission denied (403). You may need admin access.';
         } else if (error.response.status === 401) {
           message = 'Unauthorized (401). Please log in.';
         }
@@ -150,12 +158,13 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
           error.response.data?.message ||
           error.response.data?.detail ||
           error.response.data?.non_field_errors?.[0] ||
-          error.response.data?.image?.[0] ||
+          error.response.data?.order?.[0] ||
           error.response.data?.name?.[0] ||
+          error.response.data?.image?.[0] ||
           JSON.stringify(error.response.data) ||
           message;
       } else if (error.request) {
-        message = 'No response from server. Check your internet connection or server status.';
+        message = 'No response from server. Check connection.';
       }
 
       setApiError(message);
@@ -193,6 +202,32 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
           {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
           <p className="mt-1 text-xs text-gray-500">
             {formData.name.length}/100 characters
+          </p>
+        </div>
+
+        {/* Display Order - NEW FIELD */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Display Order
+          </label>
+          <input
+            type="number"
+            name="order"
+            value={formData.order}
+            onChange={handleChange}
+            min="0"
+            step="1"
+            placeholder="0 (higher priority = lower number)"
+            disabled={submitting}
+            className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              errors.order ? 'border-red-500' : 'border-gray-300'
+            }`}
+          />
+          {errors.order && (
+            <p className="mt-1 text-sm text-red-600">{errors.order}</p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Smaller number = appears earlier (0 = highest priority)
           </p>
         </div>
 
@@ -241,7 +276,6 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
             Category Image
           </label>
           <div className="flex items-start gap-6">
-            {/* Preview Area */}
             <label className="cursor-pointer">
               <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition relative overflow-hidden">
                 {previewUrl ? (
@@ -280,13 +314,10 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
               </div>
             </label>
 
-            {/* Help text */}
             <div className="text-sm text-gray-500">
               <p>Recommended: square image (512×512 or larger)</p>
               <p>PNG, JPG, max 5MB</p>
-              {errors.image && (
-                <p className="text-red-600 mt-1">{errors.image}</p>
-              )}
+              {errors.image && <p className="text-red-600 mt-1">{errors.image}</p>}
             </div>
           </div>
         </div>

@@ -61,7 +61,7 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
 // Main Login Page
 // ────────────────────────────────────────────────
 export default function LoginPage() {
-  const { token: contextToken, setToken } = useAuth();
+  const { token: contextToken, setToken,setIsAdmin } = useAuth();
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -212,7 +212,7 @@ export default function LoginPage() {
     try {
       const res = await generateOTP({ identifier: email });
       if (res?.success !== true) {
-        throw new Error(res?.message || "Failed to resend OTP");
+        throw new Error( "Failed to resend OTP");
       }
       setCountdown(60);
       showToast("New OTP sent", "success");
@@ -236,7 +236,7 @@ export default function LoginPage() {
       if (!email) throw new Error("Email missing from session");
 
       const res = await otpVerificationLogin({ otp, identifier: email });
-
+      console.log("OTP verification response:", res);
       setToken(res.access);
       localStorage.setItem("accessToken", res.access);
       if (res.refresh) localStorage.setItem("refreshToken", res.refresh);
@@ -244,10 +244,14 @@ export default function LoginPage() {
 
       showToast("Login successful!", "success");
 
-      setTimeout(() => {
+      setTimeout(async () => {
         if (res.is_admin || res.role === "admin") {
+          //  await localStorage.setItem("isAdmin", "true");
+          setIsAdmin(true);
           navigate("/admin", { replace: true });
         } else {
+           setIsAdmin(false)
+
           navigate("/home", { replace: true });
         }
       }, 700);
