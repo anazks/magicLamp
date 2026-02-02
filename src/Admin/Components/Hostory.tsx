@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { getAllRequestedServices, updateRequestStatus } from "../../Api/Service";
-import { FaSearch, FaFilter, FaSort, FaMapMarkerAlt, FaEye, FaSpinner } from "react-icons/fa";
+import { FaSearch, FaFilter, FaMapMarkerAlt, FaEye, FaSpinner } from "react-icons/fa";
 import Loader from "../../Component/Loader/Loader";
 
 /* ───────────────── TYPES ───────────────── */
