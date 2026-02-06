@@ -209,12 +209,17 @@ export default function History() {
 
   const availableActions = (status: RequestStatus): RequestStatus[] => {
     switch (status) {
-      case "Pending":     return ["Assigned", "Cancelled"];
-      case "Assigned":    return ["In Progress", "Cancelled"];
-      case "In Progress": return ["Completed", "Cancelled"];
+      case "Pending":
+        return ["Assigned", "Cancelled"];
+      case "Assigned":
+        return ["In Progress", "Cancelled"];
+      case "In Progress":
+        return ["Completed", "Cancelled"];
       case "Completed":
-      case "Cancelled":   return [];
-      default:            return [];
+      case "Cancelled":
+        return [];
+      default:
+        return [];
     }
   };
 
@@ -245,21 +250,21 @@ export default function History() {
 
   const getStatusColor = (status: RequestStatus) => {
     const colors: Record<RequestStatus, string> = {
-      Pending:     "bg-yellow-100 text-yellow-800",
-      Assigned:    "bg-blue-100 text-blue-800",
+      Pending: "bg-yellow-100 text-yellow-800",
+      Assigned: "bg-blue-100 text-blue-800",
       "In Progress": "bg-purple-100 text-purple-800",
-      Completed:   "bg-green-100 text-green-800",
-      Cancelled:   "bg-red-100 text-red-800",
+      Completed: "bg-green-100 text-green-800",
+      Cancelled: "bg-red-100 text-red-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };
 
   const getActionButtonColor = (action: RequestStatus) => {
     const colors: Partial<Record<RequestStatus, string>> = {
-      Assigned:     "bg-blue-600 hover:bg-blue-700",
+      Assigned: "bg-blue-600 hover:bg-blue-700",
       "In Progress": "bg-purple-600 hover:bg-purple-700",
-      Completed:    "bg-green-600 hover:bg-green-700",
-      Cancelled:    "bg-red-600 hover:bg-red-700",
+      Completed: "bg-green-600 hover:bg-green-700",
+      Cancelled: "bg-red-600 hover:bg-red-700",
     };
     return colors[action] || "bg-gray-600 hover:bg-gray-700";
   };
@@ -349,12 +354,24 @@ export default function History() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Customer
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Service
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -375,7 +392,9 @@ export default function History() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(req.status)}`}
+                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                              req.status
+                            )}`}
                           >
                             {req.status}
                           </span>
@@ -390,15 +409,21 @@ export default function History() {
                                 key={action}
                                 disabled={updatingId === req.id}
                                 onClick={() => updateStatus(req.id, action)}
-                                className={`px-3 py-1 text-xs font-medium text-white rounded-md ${getActionButtonColor(action)} disabled:opacity-50`}
+                                className={`px-3 py-1 text-xs font-medium text-white rounded-md ${getActionButtonColor(
+                                  action
+                                )} disabled:opacity-50 transition-colors`}
                               >
-                                {updatingId === req.id ? <FaSpinner className="animate-spin" /> : action}
+                                {updatingId === req.id ? (
+                                  <FaSpinner className="animate-spin" />
+                                ) : (
+                                  action
+                                )}
                               </button>
                             ))}
 
                             <button
                               onClick={() => setSelectedRequest(req)}
-                              className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 flex items-center gap-1"
+                              className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 flex items-center gap-1 transition-colors"
                             >
                               <FaEye /> View
                             </button>
@@ -421,21 +446,23 @@ export default function History() {
                   <button
                     onClick={goToPrevious}
                     disabled={!prevUrl || loading}
-                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                   >
-                    <FaChevronLeft /> Previous
+                    <FaChevronLeft />
+                    Previous
                   </button>
 
-                  <span>
+                  <span className="text-gray-700">
                     Page <strong>{currentPage}</strong> of <strong>{totalPages || 1}</strong>
                   </span>
 
                   <button
                     onClick={goToNext}
                     disabled={!nextUrl || loading}
-                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                   >
-                    Next <FaChevronRight />
+                    Next
+                    <FaChevronRight />
                   </button>
                 </div>
               </div>
@@ -443,7 +470,7 @@ export default function History() {
           )}
         </div>
 
-        {/* ── Detail Modal ──────────────────────────────────────────────── */}
+        {/* Detail Modal */}
         {selectedRequest && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -496,7 +523,7 @@ export default function History() {
                     {reverseLoading ? (
                       <p className="mt-1 text-gray-600">Loading location...</p>
                     ) : (
-                      <p className="mt-1 text-gray-800" style={{ display: 'none', marginTop: '0.25rem' }}>{reverseAddress}</p>
+                      <p className="mt-1 text-gray-800">{reverseAddress}</p>
                     )}
                     {selectedRequest.latitude && selectedRequest.longitude && (
                       <button
