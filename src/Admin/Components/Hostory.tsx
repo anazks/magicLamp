@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { getAllRequestedServices, updateRequestStatus } from "../../Api/Service";
+import axios from "axios";
 import {
   FaSearch,
   FaFilter,
@@ -78,6 +79,10 @@ export default function History() {
     cancelled: 0,
   });
 
+  // Reverse geocoded address (for modal)
+  const [reverseAddress, setReverseAddress] = useState<string>("");
+  const [reverseLoading, setReverseLoading] = useState(false);
+
   useEffect(() => {
     fetchRequests();
   }, []);
@@ -87,7 +92,7 @@ export default function History() {
     try {
       const response = url
         ? await getAllRequestedServices(url)
-        : await getAllRequestedServices(url);
+        : await getAllRequestedServices();
 
       console.log("Service requests fetched:", response);
 
@@ -98,7 +103,6 @@ export default function History() {
       setNextUrl(data.next);
       setPrevUrl(data.previous);
 
-      // Update stats if provided by backend
       if (data.stats) {
         setStats({
           total: data.stats.total,
@@ -110,7 +114,6 @@ export default function History() {
         });
       }
 
-      // Update current page from URL if applicable
       if (url) {
         const match = url.match(/[?&]page=(\d+)/);
         if (match) setCurrentPage(Number(match[1]));
@@ -137,26 +140,82 @@ export default function History() {
     if (nextUrl) fetchRequests(nextUrl);
   };
 
+  // Fetch reverse geocoded address when modal opens
+  useEffect(() => {
+    if (selectedRequest?.latitude && selectedRequest?.longitude) {
+      const lat = parseFloat(selectedRequest.latitude);
+      const lng = parseFloat(selectedRequest.longitude);
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        fetchReverseGeocode(lat, lng);
+      } else {
+        setReverseAddress("Invalid coordinates");
+      }
+    } else {
+      setReverseAddress("No coordinates available");
+    }
+  }, [selectedRequest]);
+
+  const fetchReverseGeocode = async (lat: number, lng: number) => {
+    setReverseLoading(true);
+    setReverseAddress("Loading address...");
+
+    try {
+      // Option 1: BigDataCloud (no key, very reliable for city/locality)
+      // const response = await fetch(
+      //   `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+      //   // `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+      // );
+
+      const response = await axios.get(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+      );
+      console.log("Reverse geocoding response:", response);
+      if (!response.data) throw new Error("API error");
+
+      const data = response.data;
+
+      // Build readable address (customize as needed)
+      const parts = [
+        data.locality || "",
+        data.city || data.locality || "",
+        data.principalSubdivision || data.administrative || "",
+        data.countryName || "",
+      ].filter(Boolean);
+
+      const formatted =
+        parts.length > 0
+          ? parts.join(", ")
+          : "Approximate location (city level)";
+
+      setReverseAddress(formatted);
+    } catch (err) {
+      console.error("Reverse geocoding failed:", err);
+
+      // Fallback: show original stored address
+      setReverseAddress(
+        selectedRequest?.address
+          ? `${selectedRequest.address} (original stored address)`
+          : "Could not fetch address"
+      );
+    } finally {
+      setReverseLoading(false);
+    }
+  };
+
   const updateStatus = async (id: number, status: RequestStatus) => {
     if (!window.confirm(`Change status to "${status}"?`)) return;
 
     try {
       setUpdatingId(id);
-      await updateRequestStatus(id, status);  // ← fixed: now passing both arguments
+      await updateRequestStatus(id, status);
 
-      // Optimistic UI update
+      // Optimistic update
       setRequests((prev) =>
         prev.map((req) => (req.id === id ? { ...req, status } : req))
       );
 
-      // Update local stats
-      setStats((prev) => {
-        const oldStatusKey = status.toLowerCase() as keyof typeof prev;
-        return {
-          ...prev,
-          [oldStatusKey]: (prev[oldStatusKey] || 0) + 1,
-        };
-      });
+      // You may also want to refresh stats from server here if needed
     } catch (err) {
       console.error("Failed to update status:", err);
       alert("Could not update status. Please try again.");
@@ -185,12 +244,10 @@ export default function History() {
   const filteredRequests = useMemo(() => {
     let result = [...requests];
 
-    // Status filter
     if (statusFilter !== "all") {
       result = result.filter((r) => r.status === statusFilter);
     }
 
-    // Search filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
       result = result.filter((r) =>
@@ -378,7 +435,7 @@ export default function History() {
                               <FaEye /> View
                             </button>
 
-                            <button
+                            {/* <button
                               onClick={() => {
                                 const mapUrl = `https://www.google.com/maps?q=${req.latitude},${req.longitude}`;
                                 window.open(mapUrl, "_blank", "noopener,noreferrer");
@@ -386,7 +443,7 @@ export default function History() {
                               className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center gap-1 transition-colors"
                             >
                               <FaMapMarkerAlt /> Map
-                            </button>
+                            </button> */}
                           </div>
                         </td>
                       </tr>
@@ -435,7 +492,7 @@ export default function History() {
           )}
         </div>
 
-        {/* View Details Modal */}
+        {/* View Details Modal – with Reverse Geocoded Address */}
         {selectedRequest && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -476,8 +533,28 @@ export default function History() {
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Address</h3>
+                    <h3 className="text-sm font-medium text-gray-500">Stored Address</h3>
                     <p className="mt-1 whitespace-pre-line">{selectedRequest.address}</p>
+                  </div>
+
+                  {/* NEW: Reverse Geocoded Address */}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                      <FaMapMarkerAlt className="text-blue-600" />
+                      user Location 
+                    </h3>
+                   <br />
+                  <button  onClick={() => {
+                                const mapUrl = `https://www.google.com/maps?q=${req.latitude},${req.longitude}`;
+                                window.open(mapUrl, "_blank", "noopener,noreferrer");
+                              }}
+                              className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center gap-1 transition-colors"
+                            >
+                              <FaMapMarkerAlt /> Get Direction
+                            </button>
+                    {/* <p className="text-xs text-gray-500 mt-1">
+                      {selectedRequest.latitude}, {selectedRequest.longitude}
+                    </p> */}
                   </div>
 
                   {selectedRequest.service_details?.description && (

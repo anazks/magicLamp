@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { listServices, makeRequest } from "../../Api/Service";
+import { profileDetails } from "../../Api/Auth";
 import Loader from "../Loader/Loader";
+
 // ────────────────────────────────────────────────
 // Interfaces (unchanged)
 // ────────────────────────────────────────────────
@@ -37,8 +39,21 @@ interface BookingFormData {
   longitude: string;
 }
 
+interface UserProfile {
+  first_name: string | null;
+  last_name: string | null;
+  phone_number: string;
+  address: string | null;
+  age: number | null;
+  date_of_birth: string | null;
+  district: string;
+  pin_code: number | null;
+  state: string;
+  profile_picture: string | null;
+}
+
 // ────────────────────────────────────────────────
-// Custom Toast Component
+// Toast Component (unchanged)
 // ────────────────────────────────────────────────
 interface ToastProps {
   message: string;
@@ -75,7 +90,114 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
 };
 
 // ────────────────────────────────────────────────
-// Subcategory Modal
+// Confirmation Popup (unchanged)
+// ────────────────────────────────────────────────
+function ConfirmationPopup({
+  formData,
+  categoryName,
+  subcategoryName,
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  formData: BookingFormData;
+  categoryName: string;
+  subcategoryName: string | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading: boolean;
+}) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[10001] p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6 sm:p-8">
+          <h3 className="text-2xl font-bold text-slate-800 mb-6 text-center">
+            Review & Confirm Booking
+          </h3>
+
+          <div className="space-y-5 mb-8 text-sm sm:text-base">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <p className="text-slate-500 font-medium">Name</p>
+                <p className="mt-1">{formData.customer_name || "—"}</p>
+              </div>
+              <div>
+                <p className="text-slate-500 font-medium">Mobile</p>
+                <p className="mt-1">{formData.mobile_number || "—"}</p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-slate-500 font-medium">Service</p>
+              <p className="mt-1 font-medium">
+                {categoryName}
+                {subcategoryName && ` → ${subcategoryName}`}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-slate-500 font-medium">Address</p>
+              <p className="mt-1">{formData.address || "—"}</p>
+            </div>
+
+            {formData.service_details.description && (
+              <div>
+                <p className="text-slate-500 font-medium">Service Details / Requirements</p>
+                <p className="mt-1 whitespace-pre-wrap">{formData.service_details.description}</p>
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-slate-500 font-medium">Location</p>
+              <p className="mt-1 text-green-700">
+                {formData.latitude && formData.longitude
+                  ? `Captured (${parseFloat(formData.latitude).toFixed(5)}, ${parseFloat(formData.longitude).toFixed(5)})`
+                  : "Not captured"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={onCancel}
+              disabled={loading}
+              className="flex-1 py-3 px-6 bg-gray-100 hover:bg-gray-200 text-slate-700 font-medium rounded-xl transition disabled:opacity-60"
+            >
+              Cancel & Edit
+            </button>
+
+            <button
+              onClick={onConfirm}
+              disabled={loading}
+              className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition disabled:opacity-60 flex items-center justify-center gap-2 shadow-md"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" className="opacity-25" />
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" className="opacity-75" />
+                  </svg>
+                  Submitting...
+                </>
+              ) : (
+                "Submit Booking"
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────
+// Subcategory Modal (unchanged)
 // ────────────────────────────────────────────────
 function SubcategoryModal({
   category,
@@ -87,11 +209,11 @@ function SubcategoryModal({
   onClose: () => void;
 }) {
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[9999]"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white w-full sm:max-w-2xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
@@ -100,10 +222,7 @@ function SubcategoryModal({
             <h2 className="text-xl sm:text-2xl font-bold text-white">Select Service</h2>
             <p className="text-blue-100 text-sm sm:text-base mt-1">{category.name}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-white/80 hover:text-white transition p-2"
-          >
+          <button onClick={onClose} className="text-white/80 hover:text-white transition p-2">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -154,75 +273,75 @@ function SubcategoryModal({
 }
 
 // ────────────────────────────────────────────────
-// Booking Modal – FIXED VERSION with proper z-index
+// Booking Modal (unchanged)
 // ────────────────────────────────────────────────
 function BookingModal({
   category,
   subcategory,
   onClose,
-  onSubmit,
   showToast,
+  latitude,
+  longitude,
+  locationError,
+  retryLocation,
+  initialName,
+  initialMobile,
+  onMobileSaved,
 }: {
   category: ServiceCategory;
   subcategory: SubCategory | null;
   onClose: () => void;
-  onSubmit: (data: BookingFormData) => Promise<void>;
   showToast: (msg: string, type: 'success' | 'error') => void;
+  latitude: string;
+  longitude: string;
+  locationError: string | null;
+  retryLocation: () => void;
+  initialName: string;
+  initialMobile: string;
+  onMobileSaved: (newMobile: string) => void;
 }) {
   const [formData, setFormData] = useState<BookingFormData>({
-    mobile_number: "",
-    customer_name: "",
+    mobile_number: initialMobile,
+    customer_name: initialName,
     category: category.id,
     subcategory: subcategory?.id || null,
     service_details: { description: "" },
     address: "",
-    latitude: "",
-    longitude: "",
+    latitude: latitude,
+    longitude: longitude,
   });
 
   const [loading, setLoading] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [locationLoading, setLocationLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   useEffect(() => {
-    getLocation();
-  }, []);
+    setFormData(prev => ({ ...prev, latitude, longitude }));
+  }, [latitude, longitude]);
 
-  const getLocation = () => {
-    if (!navigator.geolocation) {
-      setLocationError("Location not supported");
-      return;
-    }
-    setLocationLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        setFormData(p => ({
-          ...p,
-          latitude: pos.coords.latitude.toString(),
-          longitude: pos.coords.longitude.toString()
-        }));
-        setLocationLoading(false);
-      },
-      () => {
-        setLocationError("Location access denied");
-        setLocationLoading(false);
-      }
-    );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.mobile_number || !formData.address || !formData.latitude) {
-      showToast("Please fill required fields and allow location", "error");
+      showToast("Please fill required fields and allow location access", "error");
       return;
     }
+    setShowConfirmation(true);
+  };
+
+  const handleConfirm = async () => {
+    setShowConfirmation(false);
     setLoading(true);
+
     try {
-      await onSubmit(formData);
+      await makeRequest(formData);
+
+      if (!initialMobile && formData.mobile_number) {
+        onMobileSaved(formData.mobile_number);
+      }
+
       showToast("Booking submitted successfully!", "success");
       onClose();
-    } catch {
-      showToast("Failed to submit booking. Try again.", "error");
+    } catch (err: any) {
+      showToast(err.message || "Failed to submit booking. Try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -238,197 +357,276 @@ function BookingModal({
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[9999]"
-      onClick={onClose}
-    >
-      <div 
-        className="bg-white w-full sm:max-w-2xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
+    <>
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[9999]"
+        onClick={onClose}
       >
-        {/* Header - sticky */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 flex justify-between items-start sticky top-0 z-20">
-          <div className="flex-1">
-            <h2 className="text-xl sm:text-2xl font-bold text-white">
-              Book {category.name}
-            </h2>
-            {subcategory && (
-              <p className="text-blue-100 text-sm sm:text-base mt-1">
-                {subcategory.name}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-white/80 hover:text-white transition p-2 -mt-2 -mr-2"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Scrollable content with extra bottom padding */}
-        <div className="overflow-y-auto flex-1">
-          <form id="booking-form" onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 pb-6">
-            {/* Name & Mobile */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Name
-              </label>
-              <input
-                type="text"
-                name="customer_name"
-                value={formData.customer_name}
-                onChange={handleChange}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                placeholder="Your name"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Mobile *
-              </label>
-              <input
-                type="tel"
-                name="mobile_number"
-                value={formData.mobile_number}
-                onChange={handleChange}
-                required
-                maxLength={10}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                placeholder="10-digit mobile number"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Address *
-              </label>
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                required
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                placeholder="Your complete address"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Service Details</label>
-              <textarea
-                name="service_description"
-                value={formData.service_details.description}
-                onChange={handleChange}
-                rows={3}
-                maxLength={500}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition resize-none"
-                placeholder="Describe what you need..."
-              />
-              <p className="text-xs text-slate-500 text-right mt-1">
-                {formData.service_details.description.length}/500
-              </p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-sm p-3 sm:p-4 rounded-lg sm:rounded-xl border border-blue-100">
-              {locationLoading ? (
-                <div className="flex items-center gap-3">
-                  <div className="animate-spin h-4 w-4 sm:h-5 sm:w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                  <span className="text-sm sm:text-base text-blue-700">Fetching location...</span>
-                </div>
-              ) : formData.latitude ? (
-                <div className="text-green-700 font-medium flex items-center gap-2 text-sm sm:text-base">
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM5 10a5 5 0 1110 0v.5a.5.5 0 01-.5.5h-9a.5.5 0 01-.5-.5V10z" clipRule="evenodd" />
-                  </svg>
-                  Location captured
-                </div>
-              ) : (
-                <div className="text-red-600 flex items-center justify-between text-sm sm:text-base">
-                  <span>{locationError || "Location required"}</span>
-                  <button
-                    type="button"
-                    onClick={getLocation}
-                    className="text-blue-600 underline text-xs sm:text-sm hover:text-blue-800"
-                  >
-                    Retry
-                  </button>
-                </div>
+        <div
+          className="bg-white w-full sm:max-w-2xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col animate-slide-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 flex justify-between items-start sticky top-0 z-20">
+            <div className="flex-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-white">
+                Book {category.name}
+              </h2>
+              {subcategory && (
+                <p className="text-blue-100 text-sm sm:text-base mt-1">
+                  {subcategory.name}
+                </p>
               )}
             </div>
-          </form>
-        </div>
-
-        {/* Footer – with proper z-index */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 border-t border-blue-500/30 p-4 sm:p-6 sticky bottom-0 z-20">
-          <div className="flex gap-3 sm:gap-4 max-w-md mx-auto">
             <button
-              type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 sm:py-3 bg-white/10 backdrop-blur-sm text-white border border-white/30 rounded-lg sm:rounded-xl hover:bg-white/20 transition text-sm sm:text-base"
+              className="text-white/80 hover:text-white transition p-2 -mt-2 -mr-2"
             >
-              Cancel
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
-            <button
-              type="submit"
-              form="booking-form"
-              disabled={loading || !formData.latitude}
-              className="flex-1 py-2.5 sm:py-3 bg-white text-blue-600 rounded-lg sm:rounded-xl hover:bg-blue-50 transition disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base font-semibold"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-blue-600" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" className="opacity-25" />
-                    <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" className="opacity-75" />
-                  </svg>
-                  Booking...
-                </>
-              ) : "Confirm Booking"}
-            </button>
+          </div>
+
+          <div className="overflow-y-auto flex-1">
+            <form id="booking-form" onSubmit={handleFormSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 pb-20 sm:pb-24">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Name</label>
+                <input
+                  type="text"
+                  name="customer_name"
+                  value={formData.customer_name}
+                  onChange={handleChange}
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                  placeholder="Your name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Mobile {initialMobile ? "" : "*"}
+                </label>
+                <input
+                  type="tel"
+                  name="mobile_number"
+                  value={formData.mobile_number}
+                  onChange={handleChange}
+                  required={!initialMobile}
+                  maxLength={10}
+                  pattern="[0-9]{10}"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                  placeholder="10-digit mobile number"
+                />
+                {initialMobile && (
+                  <p className="text-xs text-slate-500 mt-1">Using registered number</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Address *</label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                  placeholder="Your complete address"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Service Details</label>
+                <textarea
+                  name="service_description"
+                  value={formData.service_details.description}
+                  onChange={handleChange}
+                  rows={3}
+                  maxLength={500}
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition resize-none"
+                  placeholder="Describe what you need..."
+                />
+                <p className="text-xs text-slate-500 text-right mt-1">
+                  {formData.service_details.description.length}/500
+                </p>
+              </div>
+
+              <div className="bg-white/80 backdrop-blur-sm p-3 sm:p-4 rounded-lg sm:rounded-xl border border-blue-100">
+                {latitude && longitude ? (
+                  <div className="text-green-700 font-medium flex items-center gap-2 text-sm sm:text-base">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM5 10a5 5 0 1110 0v.5a.5.5 0 01-.5.5h-9a.5.5 0 01-.5-.5V10z" clipRule="evenodd" />
+                    </svg>
+                    Location captured
+                  </div>
+                ) : locationError ? (
+                  <div className="text-red-600 flex items-center justify-between text-sm sm:text-base">
+                    <span>{locationError}</span>
+                    <button
+                      type="button"
+                      onClick={retryLocation}
+                      className="text-blue-600 underline text-xs sm:text-sm hover:text-blue-800"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 text-blue-700">
+                    <div className="animate-spin h-4 w-4 sm:h-5 sm:w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                    Fetching location...
+                  </div>
+                )}
+              </div>
+            </form>
+          </div>
+
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 border-t border-blue-500/30 p-4 sm:p-6 sticky bottom-0 z-20">
+            <div className="flex gap-3 sm:gap-4 max-w-md mx-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2.5 sm:py-3 bg-white/10 backdrop-blur-sm text-white border border-white/30 rounded-lg sm:rounded-xl hover:bg-white/20 transition text-sm sm:text-base"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="booking-form"
+                disabled={loading || !latitude || !longitude || (!initialMobile && !formData.mobile_number)}
+                className="flex-1 py-2.5 sm:py-3 bg-white text-blue-600 rounded-lg sm:rounded-xl hover:bg-blue-50 transition disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base font-semibold"
+              >
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-blue-600" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" className="opacity-25" />
+                      <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" className="opacity-75" />
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  "Review & Submit"
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {showConfirmation && (
+        <ConfirmationPopup
+          formData={formData}
+          categoryName={category.name}
+          subcategoryName={subcategory?.name ?? null}
+          onConfirm={handleConfirm}
+          onCancel={() => setShowConfirmation(false)}
+          loading={loading}
+        />
+      )}
+    </>
   );
 }
 
 // ────────────────────────────────────────────────
-// Main Service Page
+// Main Service Component – with safe profile fetch
 // ────────────────────────────────────────────────
 export default function Service() {
   const [services, setServices] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<SubCategory | null>(null);
   const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Location states
+  const [latitude, setLatitude] = useState<string>("");
+  const [longitude, setLongitude] = useState<string>("");
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(true);
+
+  // Profile state
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
   useEffect(() => {
-    fetchServices();
+    const loadInitialData = async () => {
+      try {
+        // 1. Check if user is logged in (has access token)
+        const accessToken = localStorage.getItem("accessToken");
+
+        // 2. Fetch profile ONLY if token exists
+        if (accessToken) {
+          try {
+            const profileRes = await profileDetails();
+            if (profileRes) {
+              const userData = profileRes as UserProfile;
+              setProfile(userData);
+              localStorage.setItem("userProfile", JSON.stringify(userData));
+            }
+          } catch (profileErr) {
+            console.warn("Profile fetch failed (possibly not logged in or token expired):", profileErr);
+            // Do NOT set error here — just skip profile (treat as guest)
+            setProfile(null);
+          }
+        } else {
+          console.log("No access token found → skipping profile fetch");
+          setProfile(null);
+        }
+
+        // 3. Always fetch services (public API)
+        const servicesData = await listServices();
+        const activeServices = (servicesData?.results || []).filter(
+          (s: ServiceCategory) => s.is_active
+        );
+        setServices(activeServices);
+      } catch (err: any) {
+        console.error("Failed to load services:", err);
+        setError("Failed to load services. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
+    getLocation();
   }, []);
+
+  const getLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      setLocationLoading(false);
+      return;
+    }
+
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(pos.coords.latitude.toString());
+        setLongitude(pos.coords.longitude.toString());
+        setLocationError(null);
+        setLocationLoading(false);
+      },
+      (err) => {
+        setLocationError(
+          err.code === 1 ? "Location access was denied" : "Unable to get location"
+        );
+        setLocationLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  const handleSaveMobile = (newMobile: string) => {
+    if (!newMobile || !profile) return;
+
+    const updated = { ...profile, phone_number: newMobile };
+    setProfile(updated);
+    localStorage.setItem("userProfile", JSON.stringify(updated));
+  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
-  };
-
-  const fetchServices = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await listServices();
-      const active = (data || []).filter((s: ServiceCategory) => s.is_active);
-      setServices(active);
-    } catch (err: any) {
-      setError("Failed to load services. Please try again.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleCategoryClick = (category: ServiceCategory) => {
@@ -447,19 +645,6 @@ export default function Service() {
     setShowBookingModal(true);
   };
 
-  const handleBookingSubmit = async (data: BookingFormData) => {
-    try {
-      await makeRequest(data);
-      showToast("Booking submitted successfully!", "success");
-      setShowBookingModal(false);
-      setSelectedCategory(null);
-      setSelectedSubcategory(null);
-    } catch (err) {
-      showToast("Failed to submit booking. Please try again.", "error");
-      console.error(err);
-    }
-  };
-
   const handleCloseModals = () => {
     setShowSubcategoryModal(false);
     setShowBookingModal(false);
@@ -468,9 +653,7 @@ export default function Service() {
   };
 
   if (loading) {
-    return (
-     <Loader/>
-    );
+    return <Loader />;
   }
 
   if (error) {
@@ -488,7 +671,7 @@ export default function Service() {
           <h2 className="text-2xl font-bold text-slate-800 mb-3">Oops!</h2>
           <p className="text-slate-600 mb-6">{error}</p>
           <button
-            onClick={fetchServices}
+            onClick={() => window.location.reload()}
             className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all hover:scale-[1.02]"
           >
             Try Again
@@ -498,18 +681,15 @@ export default function Service() {
     );
   }
 
+  const initialName = profile?.first_name || "";
+  const initialMobile = profile?.phone_number || "";
+
   return (
     <>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20 relative overflow-hidden">
-        {/* Animated Background Elements */}
+        {/* Animated background */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
           {[...Array(15)].map((_, i) => (
             <div
@@ -527,11 +707,37 @@ export default function Service() {
           ))}
           <div className="absolute -top-40 -left-40 w-80 h-80 bg-gradient-to-r from-blue-200/30 to-cyan-200/20 rounded-full blur-3xl animate-pulse-slow"></div>
           <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-gradient-to-r from-indigo-200/20 to-purple-200/30 rounded-full blur-3xl animate-pulse-slow delay-1000"></div>
-          <div className="absolute top-1/4 right-1/4 w-60 h-60 bg-gradient-to-r from-cyan-100/20 to-blue-100/30 rounded-full blur-3xl animate-pulse-slow delay-1500"></div>
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-8 sm:pt-12">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          {/* Location status */}
+          <div className="mb-6 p-3 bg-white/70 backdrop-blur-sm rounded-xl border border-blue-100 text-sm">
+            {locationLoading ? (
+              <div className="flex items-center gap-2 text-blue-700">
+                <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+                Fetching your location...
+              </div>
+            ) : latitude && longitude ? (
+              <div className="text-green-700 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM5 10a5 5 0 1110 0v.5a.5.5 0 01-.5.5h-9a.5.5 0 01-.5-.5V10z" clipRule="evenodd" />
+                </svg>
+                Location ready
+              </div>
+            ) : (
+              <div className="flex items-center justify-between text-red-600">
+                <span>{locationError || "Location not available"}</span>
+                <button
+                  onClick={getLocation}
+                  className="text-blue-600 underline hover:text-blue-800 text-xs"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
             {services.map((category) => (
               <div
                 key={category.id}
@@ -552,9 +758,7 @@ export default function Service() {
                       </span>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-blue-900/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
-
                 <div className="p-3 sm:p-4 text-center bg-gradient-to-b from-white to-blue-50/50">
                   <h3 className="text-xs sm:text-sm md:text-base font-semibold text-slate-800 group-hover:text-blue-700 transition-colors line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem]">
                     {category.name}
@@ -576,7 +780,6 @@ export default function Service() {
         </div>
       </div>
 
-      {/* Modals */}
       {showSubcategoryModal && selectedCategory && (
         <SubcategoryModal
           category={selectedCategory}
@@ -590,70 +793,38 @@ export default function Service() {
           category={selectedCategory}
           subcategory={selectedSubcategory}
           onClose={handleCloseModals}
-          onSubmit={handleBookingSubmit}
           showToast={showToast}
+          latitude={latitude}
+          longitude={longitude}
+          locationError={locationError}
+          retryLocation={getLocation}
+          initialName={initialName}
+          initialMobile={initialMobile}
+          onMobileSaved={handleSaveMobile}
         />
       )}
 
       <style>{`
         @keyframes pulse-slow {
-          0%, 100% {
-            opacity: 0.2;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.3;
-            transform: scale(1.05);
-          }
+          0%, 100% { opacity: 0.2; transform: scale(1); }
+          50% { opacity: 0.3; transform: scale(1.05); }
         }
-
         @keyframes float {
-          0%, 100% {
-            transform: translateY(0) rotate(0deg);
-          }
-          50% {
-            transform: translateY(-20px) rotate(5deg);
-          }
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(5deg); }
         }
-
         @keyframes slide-up {
-          from {
-            transform: translateY(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
+          from { transform: translateY(100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
-
-        @keyframes slide-down {
-          from {
-            transform: translate(-50%, -100%);
-            opacity: 0;
-          }
-          to {
-            transform: translate(-50%, 0);
-            opacity: 1;
-          }
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-
-        .animate-pulse-slow {
-          animation: pulse-slow 8s ease-in-out infinite;
-        }
-
-        .animate-float {
-          animation: float 20s ease-in-out infinite;
-        }
-
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
-        }
-
-        .animate-slide-down {
-          animation: slide-down 0.3s ease-out;
-        }
-
+        .animate-pulse-slow { animation: pulse-slow 8s ease-in-out infinite; }
+        .animate-float { animation: float 20s ease-in-out infinite; }
+        .animate-slide-up { animation: slide-up 0.3s ease-out; }
+        .animate-fade-in-up { animation: fade-in-up 0.3s ease-out; }
         .line-clamp-2 {
           display: -webkit-box;
           -webkit-line-clamp: 2;

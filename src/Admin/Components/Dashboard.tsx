@@ -1,22 +1,35 @@
-import { useState, useEffect } from 'react';
-import { 
-  FaTools, FaChevronDown, FaChevronUp, FaTrashAlt, FaEnvelope, FaPlus, 
-  FaHistory, FaBars, FaListAlt, FaSignOutAlt, FaEdit, FaChartLine 
-} from 'react-icons/fa';
-import AddCategory from './Addcategory';
-import AddSubCategory from './AddSubCategory';
-import Stats from './Stats';
-import History from './Hostory'; // rename file to History.tsx when possible
-import { 
-  getAllServiceCategory, 
-  deleteCategory, 
-  updateCategory, 
-  updateSubCategory, 
-  deleteSubCategory 
-} from '../../Api/Service';
-import { addEmail, getAllEmails, deleteEmail } from '../../Api/EmailsAdmin';
-import logo from '../../assets/logo.png';
-import Loader from '../../Component/Loader/Loader';
+import React, { useState, useEffect } from "react";
+import {
+  FaTools,
+  FaChevronDown,
+  FaChevronUp,
+  FaTrashAlt,
+  FaEnvelope,
+  FaPlus,
+  FaHistory,
+  FaBars,
+  FaListAlt,
+  FaSignOutAlt,
+  FaEdit,
+  FaChartLine,
+  FaUsers,
+} from "react-icons/fa";
+import AddCategory from "./Addcategory";
+import AddSubCategory from "./AddSubCategory";
+import Users from "./Users";
+import Stats from "./Stats";
+import History from "./Hostory"; // rename to History.tsx when possible
+import {
+  getAllServiceCategory,
+  deleteCategory,
+  updateCategory,
+  updateSubCategory,
+  deleteSubCategory,
+} from "../../Api/Service";
+import { profileDetails } from "../../Api/Auth";
+import { addEmail, getAllEmails, deleteEmail } from "../../Api/EmailsAdmin";
+import logo from "../../assets/logo.png";
+import Loader from "../../Component/Loader/Loader";
 
 interface SubCategoryItem {
   id: number;
@@ -25,6 +38,7 @@ interface SubCategoryItem {
   image?: string | null;
   service_charge?: string;
   is_active?: boolean;
+  order?: number;
 }
 
 interface ServiceItem {
@@ -36,6 +50,7 @@ interface ServiceItem {
   service_charge?: string;
   is_active: boolean;
   subcategories: SubCategoryItem[];
+  order?: number;
 }
 
 interface AdminEmail {
@@ -44,21 +59,34 @@ interface AdminEmail {
   priority: 1 | 2 | 3 | 4 | 5;
 }
 
+interface AdminProfile {
+  email?: string;
+  name?: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  [key: string]: any;
+}
+
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState<
-    'stats' | 'requests' | 'add-category' | 'add-subcategory' | 'categories' | 'admin-emails'
-  >('stats');
+    "stats" | "requests" | "add-category" | "add-subcategory" | "categories" | "admin-emails" | "users"
+  >("stats");
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Service Categories
+  // Admin profile
+  const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  // Services
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [servicesError, setServicesError] = useState<string | null>(null);
 
   const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
 
-  // Delete Confirmations
+  // Delete modals
   const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState<{ id: number; name: string } | null>(null);
   const [deleteSubConfirm, setDeleteSubConfirm] = useState<{
     categoryId: number;
@@ -66,66 +94,105 @@ export default function Dashboard() {
     subName: string;
   } | null>(null);
 
-  // Edit Category
+  // Edit category
   const [editingCategory, setEditingCategory] = useState<ServiceItem | null>(null);
   const [editCatForm, setEditCatForm] = useState({
-    name: '',
-    description: '',
-    service_charge: '',
+    name: "",
+    description: "",
+    service_charge: "",
     is_active: true,
+    order: 0,
   });
   const [editCatImageFile, setEditCatImageFile] = useState<File | null>(null);
   const [editCatPreview, setEditCatPreview] = useState<string | null>(null);
   const [editCatRemoveImage, setEditCatRemoveImage] = useState(false);
 
-  // Edit Subcategory
+  // Edit subcategory
   const [editingSubCategory, setEditingSubCategory] = useState<{
     categoryId: number;
     sub: SubCategoryItem;
   } | null>(null);
   const [editSubForm, setEditSubForm] = useState({
-    name: '',
-    description: '',
-    service_charge: '',
+    name: "",
+    description: "",
+    service_charge: "",
     is_active: true,
+    order: 0,
   });
   const [editSubImageFile, setEditSubImageFile] = useState<File | null>(null);
   const [editSubPreview, setEditSubPreview] = useState<string | null>(null);
   const [editSubRemoveImage, setEditSubRemoveImage] = useState(false);
 
-  // Admin Emails
+  // Emails
   const [adminEmails, setAdminEmails] = useState<AdminEmail[]>([]);
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [emailsError, setEmailsError] = useState<string | null>(null);
-  const [newEmail, setNewEmail] = useState('');
+  const [newEmail, setNewEmail] = useState("");
   const [newPriority, setNewPriority] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [addingEmail, setAddingEmail] = useState(false);
   const [deleteEmailId, setDeleteEmailId] = useState<number | null>(null);
 
-  // ── Fetch Categories ───────────────────────────────────────────
+  // Fetch admin profile once
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoadingProfile(true);
+        const res = await profileDetails();
+        console.log("Admin profile:", res);
+
+        // Try common response shapes
+        const profileData =
+          res?.data?.user ||
+          res?.data ||
+          res?.user ||
+          res;
+
+        setAdminProfile(profileData);
+      } catch (err) {
+        console.error("Failed to load admin profile:", err);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
   const fetchCategories = async () => {
     try {
       setLoadingServices(true);
       setServicesError(null);
 
       const res = await getAllServiceCategory();
-
       let categoryData: ServiceItem[] = [];
 
-      if (res?.data?.results) {
-        categoryData = res.data.results;
-      } else if (res?.data?.data) {
-        categoryData = res.data.data;
-      } else if (Array.isArray(res?.data)) {
-        categoryData = res.data;
-      } else if (Array.isArray(res)) {
-        categoryData = res;
-      }
+      if (res?.data?.results) categoryData = res.data.results;
+      else if (res?.data?.data) categoryData = res.data.data;
+      else if (Array.isArray(res?.data)) categoryData = res.data;
+      else if (Array.isArray(res)) categoryData = res;
+
+      categoryData.sort((a, b) => {
+        const orderA = a.order ?? 999999;
+        const orderB = b.order ?? 999999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      });
+
+      categoryData.forEach((cat) => {
+        if (cat.subcategories?.length) {
+          cat.subcategories.sort((a, b) => {
+            const orderA = a.order ?? 999999;
+            const orderB = b.order ?? 999999;
+            if (orderA !== orderB) return orderA - orderB;
+            return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+          });
+        }
+      });
 
       setServices(categoryData);
     } catch (err) {
-      console.error('Failed to load categories:', err);
-      setServicesError('Failed to load service categories');
+      console.error("Failed to load categories:", err);
+      setServicesError("Failed to load service categories");
     } finally {
       setLoadingServices(false);
     }
@@ -139,17 +206,16 @@ export default function Dashboard() {
       const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setAdminEmails(data);
     } catch (err) {
-      console.error('Failed to load emails:', err);
-      setEmailsError('Failed to load admin emails');
+      console.error("Failed to load emails:", err);
+      setEmailsError("Failed to load admin emails");
     } finally {
       setLoadingEmails(false);
     }
   };
 
   useEffect(() => {
-    if (activeSection === 'categories') {
-      fetchCategories();
-    }
+    if (activeSection === "categories") fetchCategories();
+    if (activeSection === "admin-emails") fetchAdminEmails();
   }, [activeSection]);
 
   useEffect(() => {
@@ -159,9 +225,10 @@ export default function Dashboard() {
       setEditCatPreview(editingCategory.image || null);
       setEditCatForm({
         name: editingCategory.name,
-        description: editingCategory.description || '',
-        service_charge: editingCategory.service_charge || '',
+        description: editingCategory.description || "",
+        service_charge: editingCategory.service_charge || "",
         is_active: editingCategory.is_active,
+        order: editingCategory.order ?? 0,
       });
     } else {
       setEditCatImageFile(null);
@@ -177,9 +244,10 @@ export default function Dashboard() {
       setEditSubPreview(editingSubCategory.sub.image || null);
       setEditSubForm({
         name: editingSubCategory.sub.name,
-        description: editingSubCategory.sub.description || '',
-        service_charge: editingSubCategory.sub.service_charge || '',
+        description: editingSubCategory.sub.description || "",
+        service_charge: editingSubCategory.sub.service_charge || "",
         is_active: editingSubCategory.sub.is_active ?? true,
+        order: editingSubCategory.sub.order ?? 0,
       });
     } else {
       setEditSubImageFile(null);
@@ -188,35 +256,31 @@ export default function Dashboard() {
     }
   }, [editingSubCategory]);
 
-  // ── Navigation ─────────────────────────────────────────────────
   const handleNavClick = (section: typeof activeSection) => {
     setActiveSection(section);
     setSidebarOpen(false);
-    if (section === 'admin-emails') fetchAdminEmails();
-    if (section === 'categories') fetchCategories();
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('accessToken');
-    sessionStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    localStorage.removeItem('userData');
-    window.location.href = '/';
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("accessToken");
+    sessionStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    localStorage.removeItem("userData");
+    window.location.href = "/";
   };
 
-  // ── Delete Handlers ────────────────────────────────────────────
   const handleDeleteCategory = async () => {
     if (!deleteCategoryConfirm) return;
     try {
       await deleteCategory(deleteCategoryConfirm.id);
-      alert(`"${deleteCategoryConfirm.name}" deleted successfully`);
+      alert(`${deleteCategoryConfirm.name} deleted successfully`);
       setDeleteCategoryConfirm(null);
       fetchCategories();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to delete category');
+      alert(err?.response?.data?.message || "Failed to delete category");
     }
   };
 
@@ -224,15 +288,14 @@ export default function Dashboard() {
     if (!deleteSubConfirm) return;
     try {
       await deleteSubCategory(deleteSubConfirm.subId);
-      alert(`"${deleteSubConfirm.subName}" deleted successfully`);
+      alert(`${deleteSubConfirm.subName} deleted successfully`);
       setDeleteSubConfirm(null);
       fetchCategories();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to delete subcategory');
+      alert(err?.response?.data?.message || "Failed to delete subcategory");
     }
   };
 
-  // ── Category Edit Handlers ─────────────────────────────────────
   const startEditCategory = (cat: ServiceItem) => {
     setEditingCategory(cat);
   };
@@ -240,12 +303,12 @@ export default function Dashboard() {
   const handleCatImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        alert('Please select a valid image file');
+      if (!file.type.startsWith("image/")) {
+        alert("Please select a valid image file");
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image size should be less than 5MB');
+        alert("Image size should be less than 5MB");
         return;
       }
       setEditCatImageFile(file);
@@ -265,40 +328,36 @@ export default function Dashboard() {
     if (!editingCategory) return;
 
     try {
+      const payload: any = {
+        name: editCatForm.name.trim(),
+        description: editCatForm.description.trim() || undefined,
+        service_charge: editCatForm.service_charge.trim() || undefined,
+        is_active: editCatForm.is_active,
+        order: Number(editCatForm.order),
+      };
+
       if (editCatImageFile) {
         const formData = new FormData();
-        formData.append('name', editCatForm.name.trim());
-        if (editCatForm.description.trim()) formData.append('description', editCatForm.description.trim());
-        if (editCatForm.service_charge.trim()) formData.append('service_charge', editCatForm.service_charge.trim());
-        formData.append('is_active', editCatForm.is_active.toString());
-        formData.append('image', editCatImageFile);
+        Object.keys(payload).forEach((key) => {
+          if (payload[key] !== undefined) formData.append(key, payload[key]);
+        });
+        formData.append("image", editCatImageFile);
         await updateCategory(editingCategory.id, formData);
       } else if (editCatRemoveImage) {
-        await updateCategory(editingCategory.id, {
-          name: editCatForm.name.trim(),
-          description: editCatForm.description.trim() || undefined,
-          service_charge: editCatForm.service_charge.trim() || undefined,
-          is_active: editCatForm.is_active,
-          image: null,
-        });
+        payload.image = null;
+        await updateCategory(editingCategory.id, payload);
       } else {
-        await updateCategory(editingCategory.id, {
-          name: editCatForm.name.trim(),
-          description: editCatForm.description.trim() || undefined,
-          service_charge: editCatForm.service_charge.trim() || undefined,
-          is_active: editCatForm.is_active,
-        });
+        await updateCategory(editingCategory.id, payload);
       }
 
-      alert('Category updated successfully');
+      alert("Category updated successfully");
       setEditingCategory(null);
       fetchCategories();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to update category');
+      alert(err?.response?.data?.message || "Failed to update category");
     }
   };
 
-  // ── Subcategory Edit Handlers ──────────────────────────────────
   const startEditSubCategory = (categoryId: number, sub: SubCategoryItem) => {
     setEditingSubCategory({ categoryId, sub });
   };
@@ -306,12 +365,12 @@ export default function Dashboard() {
   const handleSubImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        alert('Please select a valid image file');
+      if (!file.type.startsWith("image/")) {
+        alert("Please select a valid image file");
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image size should be less than 5MB');
+        alert("Image size should be less than 5MB");
         return;
       }
       setEditSubImageFile(file);
@@ -331,55 +390,52 @@ export default function Dashboard() {
     if (!editingSubCategory) return;
 
     try {
+      const payload: any = {
+        name: editSubForm.name.trim(),
+        description: editSubForm.description.trim() || undefined,
+        service_charge: editSubForm.service_charge.trim() || undefined,
+        is_active: editSubForm.is_active,
+        order: Number(editSubForm.order),
+      };
+
       if (editSubImageFile) {
         const formData = new FormData();
-        formData.append('name', editSubForm.name.trim());
-        if (editSubForm.description.trim()) formData.append('description', editSubForm.description.trim());
-        if (editSubForm.service_charge.trim()) formData.append('service_charge', editSubForm.service_charge.trim());
-        formData.append('is_active', editSubForm.is_active.toString());
-        formData.append('image', editSubImageFile);
+        Object.keys(payload).forEach((key) => {
+          if (payload[key] !== undefined) formData.append(key, payload[key]);
+        });
+        formData.append("image", editSubImageFile);
         await updateSubCategory(editingSubCategory.sub.id, formData);
       } else if (editSubRemoveImage) {
-        await updateSubCategory(editingSubCategory.sub.id, {
-          name: editSubForm.name.trim(),
-          description: editSubForm.description.trim() || undefined,
-          service_charge: editSubForm.service_charge.trim() || undefined,
-          is_active: editSubForm.is_active,
-          image: null,
-        });
+        payload.image = null;
+        await updateSubCategory(editingSubCategory.sub.id, payload);
       } else {
-        await updateSubCategory(editingSubCategory.sub.id, {
-          name: editSubForm.name.trim(),
-          description: editSubForm.description.trim() || undefined,
-          service_charge: editSubForm.service_charge.trim() || undefined,
-          is_active: editSubForm.is_active,
-        });
+        await updateSubCategory(editingSubCategory.sub.id, payload);
       }
 
-      alert('Subcategory updated successfully');
+      alert("Subcategory updated successfully");
       setEditingSubCategory(null);
       fetchCategories();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to update subcategory');
+      alert(err?.response?.data?.message || "Failed to update subcategory");
     }
   };
 
-  // ── Email Handlers ─────────────────────────────────────────────
   const handleAddEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      alert('Please enter a valid email address');
+      alert("Please enter a valid email address");
       return;
     }
+
     try {
       setAddingEmail(true);
       await addEmail({ email: newEmail.trim(), priority: newPriority });
-      alert('Email added successfully');
-      setNewEmail('');
+      alert("Email added successfully");
+      setNewEmail("");
       setNewPriority(3);
       fetchAdminEmails();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to add email');
+      alert(err?.response?.data?.message || "Failed to add email");
     } finally {
       setAddingEmail(false);
     }
@@ -388,22 +444,44 @@ export default function Dashboard() {
   const handleDeleteEmail = async (id: number) => {
     try {
       await deleteEmail(id);
-      alert('Email deleted successfully');
+      alert("Email deleted successfully");
       fetchAdminEmails();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to delete email');
+      alert(err?.response?.data?.message || "Failed to delete email");
     }
+  };
+
+  const getDisplayName = () => {
+    if (loadingProfile) return "Loading...";
+    if (!adminProfile) return "Admin";
+
+    return (
+      adminProfile.name ||
+      adminProfile.username ||
+      adminProfile.email ||
+      `${adminProfile.first_name || ""} ${adminProfile.last_name || ""}`.trim() ||
+      "Admin"
+    );
   };
 
   const getPageTitle = () => {
     switch (activeSection) {
-      case 'stats':           return 'Dashboard Overview';
-      case 'requests':        return 'Service Requests';
-      case 'add-category':    return 'Add Category';
-      case 'add-subcategory': return 'Add Subcategory';
-      case 'categories':      return 'Service Categories';
-      case 'admin-emails':    return 'Admin Emails';
-      default:                return 'Dashboard';
+      case "stats":
+        return "Dashboard Overview";
+      case "requests":
+        return "Service Requests";
+      case "add-category":
+        return "Add Category";
+      case "add-subcategory":
+        return "Add Subcategory";
+      case "categories":
+        return "Service Categories";
+      case "admin-emails":
+        return "Admin Emails";
+      case "users":
+        return "Users Management";
+      default:
+        return "Dashboard";
     }
   };
 
@@ -412,83 +490,85 @@ export default function Dashboard() {
       {/* Sidebar */}
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         <div className="h-full flex flex-col">
           <div className="p-6 border-b">
-            <div 
+            <div
               className="flex items-center gap-3 cursor-pointer"
-              onClick={() => handleNavClick('stats')}
+              onClick={() => handleNavClick("stats")}
             >
               <img src={logo} alt="Magic Lamp" className="h-10 w-10" />
-              <span className="text-xl font-bold text-gray-800">Magic Lamp</span>
+              <span className="font-cinzel font-black text-xl md:text-2xl bg-gradient-to-r from-blue-700 to-amber-500 bg-clip-text text-transparent whitespace-nowrap">
+                Magic Lamp
+              </span>
             </div>
           </div>
 
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            <button 
-              onClick={() => handleNavClick('stats')}
+            <button
+              onClick={() => handleNavClick("stats")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'stats' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+                activeSection === "stats" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               <FaChartLine className="text-lg" /> Dashboard
             </button>
-
-            <button 
-              onClick={() => handleNavClick('requests')}
+            <button
+              onClick={() => handleNavClick("requests")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'requests' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+                activeSection === "requests" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               <FaHistory className="text-lg" /> Service Requests
             </button>
-
-            <button 
-              onClick={() => handleNavClick('add-category')}
+            <button
+              onClick={() => handleNavClick("add-category")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'add-category' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+                activeSection === "add-category" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               <FaPlus className="text-lg" /> Add Category
             </button>
-
-            <button 
-              onClick={() => handleNavClick('add-subcategory')}
+            <button
+              onClick={() => handleNavClick("add-subcategory")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'add-subcategory' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+                activeSection === "add-subcategory" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               <FaTools className="text-lg" /> Add Subcategory
             </button>
-
-            <button 
-              onClick={() => handleNavClick('categories')}
+            <button
+              onClick={() => handleNavClick("categories")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'categories' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+                activeSection === "categories" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               <FaListAlt className="text-lg" /> Service Categories
             </button>
-
-            <button 
-              onClick={() => handleNavClick('admin-emails')}
+            <button
+              onClick={() => handleNavClick("admin-emails")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === 'admin-emails' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+                activeSection === "admin-emails" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               <FaEnvelope className="text-lg" /> Admin Emails
+            </button>
+            <button
+              onClick={() => handleNavClick("users")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                activeSection === "users" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <FaUsers className="text-lg" /> Users
             </button>
           </nav>
         </div>
       </aside>
 
       {sidebarOpen && (
-        <div 
-          onClick={() => setSidebarOpen(false)} 
-          className="lg:hidden fixed inset-0 bg-black/20 z-40" 
-        />
+        <div onClick={() => setSidebarOpen(false)} className="lg:hidden fixed inset-0 bg-black/20 z-40" />
       )}
 
       {/* Main Content */}
@@ -496,8 +576,8 @@ export default function Dashboard() {
         <div className="sticky top-0 z-30 bg-white border-b shadow-sm">
           <div className="px-4 lg:px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button 
-                onClick={() => setSidebarOpen(true)} 
+              <button
+                onClick={() => setSidebarOpen(true)}
                 className="lg:hidden text-gray-600 focus:outline-none"
               >
                 <FaBars size={24} />
@@ -506,10 +586,17 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-5">
-              <span className="text-sm text-gray-600 hidden md:block">Admin</span>
-              <div className="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-semibold text-lg">
-                A
-              </div>
+              <span className="text-sm text-gray-600 hidden md:block">
+                {getDisplayName()}
+              </span>
+
+              <button
+                onClick={() => handleNavClick("users")}
+                className="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-semibold text-lg hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                title="View / Manage Users"
+              >
+                {getDisplayName()?.charAt(0)?.toUpperCase() || "A"}
+              </button>
 
               <button
                 onClick={handleLogout}
@@ -524,11 +611,9 @@ export default function Dashboard() {
         </div>
 
         <div className="p-4 lg:p-8">
-          {/* ── Stats ──────────────────────── */}
-          {activeSection === 'stats' && <Stats />}
+          {activeSection === "stats" && <Stats />}
 
-          {/* ── Service Requests ─────────────────────────────────────── */}
-          {activeSection === 'requests' && (
+          {activeSection === "requests" && (
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow-sm">
                 <div className="px-6 py-4 border-b">
@@ -539,28 +624,27 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Admin Emails ─────────────────────────────────────────── */}
-          {activeSection === 'admin-emails' && (
+          {activeSection === "admin-emails" && (
             <div className="max-w-4xl space-y-6">
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-800 mb-6">Manage Admin Emails</h2>
                 <form onSubmit={handleAddEmail} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <input 
-                      type="email" 
-                      value={newEmail} 
-                      onChange={(e) => setNewEmail(e.target.value)} 
-                      placeholder="admin@company.com" 
-                      required 
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="admin@company.com"
+                      required
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-                    <select 
-                      value={newPriority} 
-                      onChange={(e) => setNewPriority(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)} 
+                    <select
+                      value={newPriority}
+                      onChange={(e) => setNewPriority(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
                     >
                       <option value={1}>1 – Highest</option>
@@ -570,12 +654,16 @@ export default function Dashboard() {
                       <option value={5}>5 – Lowest</option>
                     </select>
                   </div>
-                  <button 
-                    type="submit" 
-                    disabled={addingEmail} 
+                  <button
+                    type="submit"
+                    disabled={addingEmail}
                     className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 justify-center"
                   >
-                    {addingEmail ? 'Adding...' : (<><FaPlus /> Add Email</>)}
+                    {addingEmail ? "Adding..." : (
+                      <>
+                        <FaPlus /> Add Email
+                      </>
+                    )}
                   </button>
                 </form>
               </div>
@@ -593,16 +681,16 @@ export default function Dashboard() {
                 ) : (
                   <div className="divide-y">
                     {adminEmails.map((item) => (
-                      <div 
-                        key={item.id} 
+                      <div
+                        key={item.id}
                         className="px-6 py-4 flex items-center justify-between hover:bg-gray-50"
                       >
                         <div>
                           <div className="font-medium text-gray-900">{item.email}</div>
                           <div className="text-sm text-gray-500">Priority: {item.priority}</div>
                         </div>
-                        <button 
-                          onClick={() => item.id && setDeleteEmailId(item.id)} 
+                        <button
+                          onClick={() => item.id && setDeleteEmailId(item.id)}
                           className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50"
                         >
                           <FaTrashAlt />
@@ -615,8 +703,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Add Category ─────────────────────────────────────────── */}
-          {activeSection === 'add-category' && (
+          {activeSection === "add-category" && (
             <div className="max-w-3xl">
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-800 mb-6">Add New Category</h2>
@@ -625,8 +712,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Add Subcategory ──────────────────────────────────────── */}
-          {activeSection === 'add-subcategory' && (
+          {activeSection === "add-subcategory" && (
             <div className="max-w-3xl">
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-800 mb-6">Add New Subcategory</h2>
@@ -635,8 +721,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Categories Management ────────────────────────────────── */}
-          {activeSection === 'categories' && (
+          {activeSection === "categories" && (
             <>
               {loadingServices ? (
                 <div className="flex items-center justify-center py-20">
@@ -651,8 +736,8 @@ export default function Dashboard() {
                   <FaListAlt className="mx-auto text-gray-400 text-5xl mb-4" />
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">No categories yet</h3>
                   <p className="text-gray-600 mb-6">Start by adding your first service category</p>
-                  <button 
-                    onClick={() => handleNavClick('add-category')} 
+                  <button
+                    onClick={() => handleNavClick("add-category")}
                     className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                   >
                     <FaPlus className="inline mr-2" /> Add Category
@@ -665,48 +750,64 @@ export default function Dashboard() {
                       <div key={cat.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
                         <div
                           onClick={() => cat.subcategories?.length > 0 && setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
-                          className={`px-6 py-4 flex items-center gap-4 ${cat.subcategories?.length > 0 ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                          className="px-6 py-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-gray-50"
                         >
-                          <div className="w-12 h-12 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-semibold text-lg flex-shrink-0">
-                            {cat.name.charAt(0)}
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="w-12 h-12 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-semibold text-lg flex-shrink-0">
+                              {cat.name.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-lg font-semibold text-gray-900">{cat.name}</h3>
+                              {cat.description && (
+                                <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">{cat.description}</p>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-semibold text-gray-900">{cat.name}</h3>
-                            {cat.description && <p className="text-sm text-gray-600 mt-1">{cat.description}</p>}
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <div className="text-sm text-gray-500">Service Charge</div>
+
+                          <div className="flex items-center gap-6">
+                            <div className="text-right min-w-[80px]">
+                              <div className="text-xs text-gray-500">Order</div>
+                              <div className="font-bold text-indigo-700">{cat.order ?? "—"}</div>
+                            </div>
+
+                            <div className="text-right min-w-[100px]">
+                              <div className="text-xs text-gray-500">Charge</div>
                               <div className="font-medium text-gray-900">
-                                {cat.service_charge ? `₹${cat.service_charge}` : '—'}
+                                {cat.service_charge ? `₹${cat.service_charge}` : "—"}
                               </div>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              cat.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {cat.is_active ? 'Active' : 'Inactive'}
+
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                cat.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {cat.is_active ? "Active" : "Inactive"}
                             </span>
+
                             {cat.subcategories?.length > 0 && (
                               <button className="text-gray-400 p-2">
                                 {expandedCategory === cat.id ? <FaChevronUp /> : <FaChevronDown />}
                               </button>
                             )}
-                            <button 
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                startEditCategory(cat); 
-                              }} 
-                              className="text-blue-600 hover:text-blue-800 p-2" 
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditCategory(cat);
+                              }}
+                              className="text-blue-600 hover:text-blue-800 p-2"
                               title="Edit category"
                             >
                               <FaEdit />
                             </button>
-                            <button 
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                setDeleteCategoryConfirm({ id: cat.id, name: cat.name }); 
-                              }} 
-                              className="text-red-600 hover:text-red-800 p-2" 
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteCategoryConfirm({ id: cat.id, name: cat.name });
+                              }}
+                              className="text-red-600 hover:text-red-800 p-2"
                               title="Delete category"
                             >
                               <FaTrashAlt />
@@ -720,35 +821,42 @@ export default function Dashboard() {
                               <div key={sub.id} className="px-6 py-4 pl-20">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
-                                    <h4 className="font-medium text-gray-900">{sub.name}</h4>
+                                    <h4 className="font-medium text-gray-900 flex items-center gap-3">
+                                      <span className="text-indigo-600 font-bold min-w-[30px] text-right">
+                                        {sub.order ?? "—"}
+                                      </span>
+                                      {sub.name}
+                                    </h4>
                                     {sub.description && (
-                                      <p className="text-sm text-gray-600 mt-1">{sub.description}</p>
+                                      <p className="text-sm text-gray-600 mt-1 ml-[38px]">{sub.description}</p>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-4">
                                     <div className="text-sm font-medium text-gray-900">
-                                      {sub.service_charge ? `₹${sub.service_charge}` : '—'}
+                                      {sub.service_charge ? `₹${sub.service_charge}` : "—"}
                                     </div>
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                      sub.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                    }`}>
-                                      {sub.is_active ? 'Active' : 'Inactive'}
+                                    <span
+                                      className={`px-2 py-1 rounded text-xs font-medium ${
+                                        sub.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                                      }`}
+                                    >
+                                      {sub.is_active ? "Active" : "Inactive"}
                                     </span>
-
-                                    <button 
-                                      onClick={() => startEditSubCategory(cat.id, sub)} 
-                                      className="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50" 
+                                    <button
+                                      onClick={() => startEditSubCategory(cat.id, sub)}
+                                      className="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50"
                                       title="Edit subcategory"
                                     >
                                       <FaEdit size={14} />
                                     </button>
-
                                     <button
-                                      onClick={() => setDeleteSubConfirm({
-                                        categoryId: cat.id,
-                                        subId: sub.id,
-                                        subName: sub.name
-                                      })}
+                                      onClick={() =>
+                                        setDeleteSubConfirm({
+                                          categoryId: cat.id,
+                                          subId: sub.id,
+                                          subName: sub.name,
+                                        })
+                                      }
                                       className="text-red-600 hover:text-red-800 p-1.5 rounded hover:bg-red-50"
                                       title="Delete subcategory"
                                     >
@@ -763,13 +871,23 @@ export default function Dashboard() {
                       </div>
                     ))}
                   </div>
-
                   <div className="text-center text-gray-600 py-6 border-t">
-                    Showing all {services.length} categories
+                    Showing all {services.length} categories (sorted by display order)
                   </div>
                 </div>
               )}
             </>
+          )}
+
+          {activeSection === "users" && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow-sm">
+                <div className="px-6 py-4 border-b">
+                  <h2 className="text-lg font-semibold text-gray-800">Users Management</h2>
+                </div>
+                <Users />
+              </div>
+            </div>
           )}
         </div>
       </main>
@@ -784,13 +902,13 @@ export default function Dashboard() {
               This action cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
-              <button 
+              <button
                 onClick={() => setDeleteCategoryConfirm(null)}
                 className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleDeleteCategory}
                 className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
               >
@@ -811,13 +929,13 @@ export default function Dashboard() {
               This action cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
-              <button 
+              <button
                 onClick={() => setDeleteSubConfirm(null)}
                 className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleDeleteSubCategory}
                 className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
               >
@@ -867,6 +985,22 @@ export default function Dashboard() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editCatForm.order}
+                  onChange={(e) => setEditCatForm({ ...editCatForm, order: Number(e.target.value) })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder="Lower number = appears first"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Used to control position in the list (0 = top)
+                </p>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Category Image</label>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
@@ -911,7 +1045,9 @@ export default function Dashboard() {
                   onChange={(e) => setEditCatForm({ ...editCatForm, is_active: e.target.checked })}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
-                <label htmlFor="cat-active" className="text-sm text-gray-700">Active</label>
+                <label htmlFor="cat-active" className="text-sm text-gray-700">
+                  Active
+                </label>
               </div>
 
               <div className="flex gap-3 justify-end pt-4">
@@ -973,6 +1109,22 @@ export default function Dashboard() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editSubForm.order}
+                  onChange={(e) => setEditSubForm({ ...editSubForm, order: Number(e.target.value) })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder="Lower number = appears first"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Controls position within this category (0 = top)
+                </p>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Subcategory Image</label>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
@@ -1017,7 +1169,9 @@ export default function Dashboard() {
                   onChange={(e) => setEditSubForm({ ...editSubForm, is_active: e.target.checked })}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
-                <label htmlFor="sub-active" className="text-sm text-gray-700">Active</label>
+                <label htmlFor="sub-active" className="text-sm text-gray-700">
+                  Active
+                </label>
               </div>
 
               <div className="flex gap-3 justify-end pt-4">
@@ -1045,21 +1199,19 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Confirm Delete</h3>
-            <p className="text-gray-600 mb-6">
-              Remove this email from admin notifications list?
-            </p>
+            <p className="text-gray-600 mb-6">Remove this email from admin notifications list?</p>
             <div className="flex gap-3 justify-end">
-              <button 
-                onClick={() => setDeleteEmailId(null)} 
+              <button
+                onClick={() => setDeleteEmailId(null)}
                 className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 Cancel
               </button>
-              <button 
-                onClick={() => { 
-                  handleDeleteEmail(deleteEmailId); 
-                  setDeleteEmailId(null); 
-                }} 
+              <button
+                onClick={() => {
+                  handleDeleteEmail(deleteEmailId);
+                  setDeleteEmailId(null);
+                }}
                 className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
               >
                 Delete

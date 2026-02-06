@@ -9,6 +9,11 @@ import GoogleAuth from "./GoogleAuth";
 // ────────────────────────────────────────────────
 // Custom Toast Component (unchanged)
 // ────────────────────────────────────────────────
+
+
+// ────────────────────────────────────────────────
+// Custom Toast Component (unchanged)
+// ────────────────────────────────────────────────
 interface ToastProps {
   message: string;
   type: 'success' | 'error' | 'info';
@@ -61,7 +66,7 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
 // Main Login Page
 // ────────────────────────────────────────────────
 export default function LoginPage() {
-  const { token: contextToken, setToken,setIsAdmin } = useAuth();
+  const { token: contextToken, setToken, setIsAdmin } = useAuth();
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -145,8 +150,8 @@ export default function LoginPage() {
   };
 
   const sendOTP = async () => {
-    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      showToast("Please enter a valid email", "error");
+    if (!formData.email || formData.email.trim() === "") {
+      showToast("Please enter your email or mobile number", "error");
       return;
     }
 
@@ -157,7 +162,6 @@ export default function LoginPage() {
       const otpResponse = await generateOTP({ identifier: formData.email });
       console.log("OTP generation response:", otpResponse);
 
-      // ── Preferred flow: check success === true first ───────────────────
       if (otpResponse?.status === 200 && otpResponse?.data.OTP) {
         localStorage.setItem("loginEmail", formData.email);
         setIsOTPSent(true);
@@ -166,11 +170,9 @@ export default function LoginPage() {
         return;
       }
 
-      // ── success === false cases ────────────────────────────────────────
       if (otpResponse?.data.success === false) {
         const msg = (otpResponse.data.message || "").toLowerCase().trim();
 
-        // User not registered / does not exist
         if (
           msg.includes("does not exist") ||
           msg.includes("not registered") ||
@@ -180,15 +182,13 @@ export default function LoginPage() {
           msg === "user does not exist"
         ) {
           setNotRegistered(true);
-          showToast("This email is not registered yet.", "error");
+          showToast("This email or mobile number is not registered yet.", "error");
           return;
         }
 
-        // Other failure reasons from backend
         throw new Error("Failed to send OTP");
       }
 
-      // ── Malformed response (neither success true nor false) ────────────
       throw new Error("Invalid response format from server");
 
     } catch (err: any) {
@@ -201,19 +201,19 @@ export default function LoginPage() {
 
   const resendOTP = async () => {
     if (countdown > 0) return;
-    const email = localStorage.getItem("loginEmail");
-    if (!email) {
+    const identifier = localStorage.getItem("loginEmail");
+    if (!identifier) {
       setIsOTPSent(false);
-      showToast("Please enter email again", "error");
+      showToast("Please enter email or mobile again", "error");
       return;
     }
 
     setIsLoading(true);
     try {
-      const res = await generateOTP({ identifier: email });
+      const res = await generateOTP({ identifier });
       console.log("Resend OTP response:", res);
       if (res?.data.success !== true) {
-        throw new Error( "Failed to resend OTP");
+        throw new Error("Failed to resend OTP");
       }
       setCountdown(60);
       showToast("New OTP sent", "success");
@@ -233,10 +233,10 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      const email = localStorage.getItem("loginEmail");
-      if (!email) throw new Error("Email missing from session");
+      const identifier = localStorage.getItem("loginEmail");
+      if (!identifier) throw new Error("Identifier missing from session");
 
-      const res = await otpVerificationLogin({ otp, identifier: email });
+      const res = await otpVerificationLogin({ otp, identifier });
       console.log("OTP verification response:", res);
       setToken(res.access);
       localStorage.setItem("accessToken", res.access);
@@ -245,14 +245,12 @@ export default function LoginPage() {
 
       showToast("Login successful!", "success");
 
-      setTimeout(async () => {
+      setTimeout(() => {
         if (res.is_admin || res.role === "admin") {
-          //  await localStorage.setItem("isAdmin", "true");
           setIsAdmin(true);
           navigate("/admin", { replace: true });
         } else {
-           setIsAdmin(false)
-
+          setIsAdmin(false);
           navigate("/home", { replace: true });
         }
       }, 700);
@@ -301,25 +299,25 @@ export default function LoginPage() {
               Welcome Back
             </h1>
             <p className="mt-3 text-gray-600">
-              {isOTPSent ? "Enter the 6-digit code we sent" : "Sign in with your email"}
+              {isOTPSent ? "Enter the 6-digit code we sent" : "Sign in with your email or mobile number"}
             </p>
           </div>
 
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 border border-gray-100/80">
             <form onSubmit={handleSubmit} className="space-y-7">
-              {/* Email Field */}
+              {/* Email / Mobile Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email address
+                  Email or Mobile Number
                 </label>
                 <div className="relative">
                   <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
-                    type="email"
+                    type="text"
                     value={formData.email}
                     onChange={handleEmailChange}
                     disabled={isOTPSent}
-                    placeholder="you@example.com"
+                    placeholder="you@example.com or +919876543210"
                     className={`w-full pl-11 pr-4 py-3.5 border rounded-2xl transition-all focus:outline-none focus:ring-2 focus:ring-indigo-200/50 ${
                       isOTPSent
                         ? "bg-green-50/40 border-green-200 text-gray-700 cursor-not-allowed"
@@ -333,7 +331,7 @@ export default function LoginPage() {
 
                 {notRegistered && (
                   <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-sm">
-                    <p className="font-medium">This email is not registered yet.</p>
+                    <p className="font-medium">This email or mobile number is not registered yet.</p>
                     <p className="mt-1.5">
                       Create an account to get started:{" "}
                       <button
@@ -421,7 +419,7 @@ export default function LoginPage() {
                   onClick={handleGoBack}
                   className="w-full py-3 border border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-colors"
                 >
-                  Try another email
+                  Try another email or mobile
                 </button>
               )}
             </form>

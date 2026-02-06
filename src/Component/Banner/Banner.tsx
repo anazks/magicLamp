@@ -228,7 +228,7 @@ export default function Banner() {
               </div>
 
               <p className="text-xl sm:text-2xl md:text-3xl tracking-wide font-semibold text-slate-700 uppercase mb-8">
-                Anything • Anywhere • Anytime
+                Anything • Anywhere • Anytime for you...!
               </p>
 
               <div className="mt-10 flex flex-col sm:flex-row gap-5 justify-center lg:justify-start">

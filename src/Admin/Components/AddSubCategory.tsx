@@ -32,7 +32,7 @@ export default function AddSubCategory({ onClose, onSuccess }: AddSubCategoryPro
         setApiError(null);
 
         const response = await getAllServiceCategory();
-
+        console.log('Raw categories response:', response);
         // Handle different possible response shapes
         let categoryList = [];
         if (response?.data) {
@@ -44,7 +44,8 @@ export default function AddSubCategory({ onClose, onSuccess }: AddSubCategoryPro
         }
 
         // Make sure each item has id & name
-        const formatted = categoryList
+        console.log('Fetched categories:', categoryList);
+        const formatted = categoryList.results
           .filter((item: any) => item?.id && item?.name)
           .map((item: any) => ({
             id: Number(item.id),

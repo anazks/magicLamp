@@ -110,3 +110,20 @@ export const googleCallBack = async () => {
             throw error;
         }
 }
+
+export const getUsers = async () => {
+    try {
+        const response = await Axios.get('/home/admin/users/');   
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
+export const getUserDetails = async (userId: number | string) => {
+    try {
+        const response = await Axios.get(`/home/admin/user/${userId}/details/`);   
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
