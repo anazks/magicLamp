@@ -59,17 +59,17 @@ export default function History() {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
 
-  // Pagination (URL-based)
+  // Pagination
   const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [prevUrl, setPrevUrl] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Search & Filter (client-side)
+  // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<RequestStatus | "all">("all");
 
-  // Stats from API
+  // Stats
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -79,7 +79,7 @@ export default function History() {
     cancelled: 0,
   });
 
-  // Reverse geocoded address (for modal)
+  // Reverse geocoding
   const [reverseAddress, setReverseAddress] = useState<string>("");
   const [reverseLoading, setReverseLoading] = useState(false);
 
@@ -93,8 +93,6 @@ export default function History() {
       const response = url
         ? await getAllRequestedServices(url)
         : await getAllRequestedServices();
-
-      console.log("Service requests fetched:", response);
 
       const data: PaginatedResponse = response.data;
 
@@ -140,20 +138,22 @@ export default function History() {
     if (nextUrl) fetchRequests(nextUrl);
   };
 
-  // Fetch reverse geocoded address when modal opens
+  // Fetch reverse geocode when selectedRequest changes
   useEffect(() => {
-    if (selectedRequest?.latitude && selectedRequest?.longitude) {
-      const lat = parseFloat(selectedRequest.latitude);
-      const lng = parseFloat(selectedRequest.longitude);
-
-      if (!isNaN(lat) && !isNaN(lng)) {
-        fetchReverseGeocode(lat, lng);
-      } else {
-        setReverseAddress("Invalid coordinates");
-      }
-    } else {
+    if (!selectedRequest?.latitude || !selectedRequest?.longitude) {
       setReverseAddress("No coordinates available");
+      return;
     }
+
+    const lat = parseFloat(selectedRequest.latitude);
+    const lng = parseFloat(selectedRequest.longitude);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      setReverseAddress("Invalid coordinates");
+      return;
+    }
+
+    fetchReverseGeocode(lat, lng);
   }, [selectedRequest]);
 
   const fetchReverseGeocode = async (lat: number, lng: number) => {
@@ -161,42 +161,28 @@ export default function History() {
     setReverseAddress("Loading address...");
 
     try {
-      // Option 1: BigDataCloud (no key, very reliable for city/locality)
-      // const response = await fetch(
-      //   `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
-      //   // `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
-      // );
-
       const response = await axios.get(
         `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
       );
-      console.log("Reverse geocoding response:", response);
-      if (!response.data) throw new Error("API error");
 
       const data = response.data;
 
-      // Build readable address (customize as needed)
       const parts = [
         data.locality || "",
         data.city || data.locality || "",
-        data.principalSubdivision || data.administrative || "",
+        data.principalSubdivision || "",
         data.countryName || "",
       ].filter(Boolean);
 
-      const formatted =
-        parts.length > 0
-          ? parts.join(", ")
-          : "Approximate location (city level)";
+      const formatted = parts.length > 0 ? parts.join(", ") : "Approximate location";
 
       setReverseAddress(formatted);
     } catch (err) {
       console.error("Reverse geocoding failed:", err);
-
-      // Fallback: show original stored address
       setReverseAddress(
         selectedRequest?.address
-          ? `${selectedRequest.address} (original stored address)`
-          : "Could not fetch address"
+          ? `${selectedRequest.address} (fallback)`
+          : "Could not determine location"
       );
     } finally {
       setReverseLoading(false);
@@ -210,15 +196,12 @@ export default function History() {
       setUpdatingId(id);
       await updateRequestStatus(id, status);
 
-      // Optimistic update
       setRequests((prev) =>
-        prev.map((req) => (req.id === id ? { ...req, status } : req))
+        prev.map((r) => (r.id === id ? { ...r, status } : r))
       );
-
-      // You may also want to refresh stats from server here if needed
     } catch (err) {
       console.error("Failed to update status:", err);
-      alert("Could not update status. Please try again.");
+      alert("Could not update status");
     } finally {
       setUpdatingId(null);
     }
@@ -226,21 +209,15 @@ export default function History() {
 
   const availableActions = (status: RequestStatus): RequestStatus[] => {
     switch (status) {
-      case "Pending":
-        return ["Assigned", "Cancelled"];
-      case "Assigned":
-        return ["In Progress", "Cancelled"];
-      case "In Progress":
-        return ["Completed", "Cancelled"];
+      case "Pending":     return ["Assigned", "Cancelled"];
+      case "Assigned":    return ["In Progress", "Cancelled"];
+      case "In Progress": return ["Completed", "Cancelled"];
       case "Completed":
-      case "Cancelled":
-        return [];
-      default:
-        return [];
+      case "Cancelled":   return [];
+      default:            return [];
     }
   };
 
-  // Filtered & sorted requests (client-side)
   const filteredRequests = useMemo(() => {
     let result = [...requests];
 
@@ -261,7 +238,6 @@ export default function History() {
       );
     }
 
-    // Sort newest first
     result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return result;
@@ -269,21 +245,21 @@ export default function History() {
 
   const getStatusColor = (status: RequestStatus) => {
     const colors: Record<RequestStatus, string> = {
-      Pending: "bg-yellow-100 text-yellow-800",
-      Assigned: "bg-blue-100 text-blue-800",
+      Pending:     "bg-yellow-100 text-yellow-800",
+      Assigned:    "bg-blue-100 text-blue-800",
       "In Progress": "bg-purple-100 text-purple-800",
-      Completed: "bg-green-100 text-green-800",
-      Cancelled: "bg-red-100 text-red-800",
+      Completed:   "bg-green-100 text-green-800",
+      Cancelled:   "bg-red-100 text-red-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };
 
   const getActionButtonColor = (action: RequestStatus) => {
     const colors: Partial<Record<RequestStatus, string>> = {
-      Assigned: "bg-blue-600 hover:bg-blue-700",
+      Assigned:     "bg-blue-600 hover:bg-blue-700",
       "In Progress": "bg-purple-600 hover:bg-purple-700",
-      Completed: "bg-green-600 hover:bg-green-700",
-      Cancelled: "bg-red-600 hover:bg-red-700",
+      Completed:    "bg-green-600 hover:bg-green-700",
+      Cancelled:    "bg-red-600 hover:bg-red-700",
     };
     return colors[action] || "bg-gray-600 hover:bg-gray-700";
   };
@@ -296,7 +272,7 @@ export default function History() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
             { label: "Total", value: stats.total, color: "text-gray-900" },
@@ -345,7 +321,7 @@ export default function History() {
           </div>
         </div>
 
-        {/* Table + Pagination */}
+        {/* Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {filteredRequests.length === 0 ? (
             <div className="text-center py-16">
@@ -361,7 +337,7 @@ export default function History() {
                     setSearchTerm("");
                     setStatusFilter("all");
                   }}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
                   Clear Filters
                 </button>
@@ -399,9 +375,7 @@ export default function History() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                              req.status
-                            )}`}
+                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(req.status)}`}
                           >
                             {req.status}
                           </span>
@@ -416,34 +390,18 @@ export default function History() {
                                 key={action}
                                 disabled={updatingId === req.id}
                                 onClick={() => updateStatus(req.id, action)}
-                                className={`px-3 py-1 text-xs font-medium text-white rounded-md ${getActionButtonColor(
-                                  action
-                                )} disabled:opacity-50 transition-colors`}
+                                className={`px-3 py-1 text-xs font-medium text-white rounded-md ${getActionButtonColor(action)} disabled:opacity-50`}
                               >
-                                {updatingId === req.id ? (
-                                  <FaSpinner className="animate-spin" />
-                                ) : (
-                                  action
-                                )}
+                                {updatingId === req.id ? <FaSpinner className="animate-spin" /> : action}
                               </button>
                             ))}
 
                             <button
                               onClick={() => setSelectedRequest(req)}
-                              className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 flex items-center gap-1 transition-colors"
+                              className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 flex items-center gap-1"
                             >
                               <FaEye /> View
                             </button>
-
-                            {/* <button
-                              onClick={() => {
-                                const mapUrl = `https://www.google.com/maps?q=${req.latitude},${req.longitude}`;
-                                window.open(mapUrl, "_blank", "noopener,noreferrer");
-                              }}
-                              className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center gap-1 transition-colors"
-                            >
-                              <FaMapMarkerAlt /> Map
-                            </button> */}
                           </div>
                         </td>
                       </tr>
@@ -454,37 +412,30 @@ export default function History() {
 
               {/* Pagination */}
               <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between text-sm gap-4">
-                <div className="text-gray-700 text-center sm:text-left">
+                <div className="text-gray-700">
                   Showing <span className="font-medium">{filteredRequests.length}</span> of{" "}
-                  <span className="font-medium">{requests.length}</span> requests
-                  {(searchTerm || statusFilter !== "all") && (
-                    <div className="text-blue-600 mt-1">
-                      (Filtered from {totalCount} total)
-                    </div>
-                  )}
+                  <span className="font-medium">{totalCount}</span> requests
                 </div>
 
                 <div className="flex items-center gap-4">
                   <button
                     onClick={goToPrevious}
                     disabled={!prevUrl || loading}
-                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50"
                   >
-                    <FaChevronLeft />
-                    Previous
+                    <FaChevronLeft /> Previous
                   </button>
 
-                  <span className="text-gray-700">
+                  <span>
                     Page <strong>{currentPage}</strong> of <strong>{totalPages || 1}</strong>
                   </span>
 
                   <button
                     onClick={goToNext}
                     disabled={!nextUrl || loading}
-                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="flex items-center gap-2 px-4 py-2 border rounded-md disabled:opacity-50"
                   >
-                    Next
-                    <FaChevronRight />
+                    Next <FaChevronRight />
                   </button>
                 </div>
               </div>
@@ -492,7 +443,7 @@ export default function History() {
           )}
         </div>
 
-        {/* View Details Modal – with Reverse Geocoded Address */}
+        {/* ── Detail Modal ──────────────────────────────────────────────── */}
         {selectedRequest && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -537,24 +488,27 @@ export default function History() {
                     <p className="mt-1 whitespace-pre-line">{selectedRequest.address}</p>
                   </div>
 
-                  {/* NEW: Reverse Geocoded Address */}
                   <div>
                     <h3 className="text-sm font-medium text-gray-500 flex items-center gap-2">
                       <FaMapMarkerAlt className="text-blue-600" />
-                      user Location 
+                      Approximate Location
                     </h3>
-                   <br />
-                  <button  onClick={() => {
-                                const mapUrl = `https://www.google.com/maps?q=${req.latitude},${req.longitude}`;
-                                window.open(mapUrl, "_blank", "noopener,noreferrer");
-                              }}
-                              className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center gap-1 transition-colors"
-                            >
-                              <FaMapMarkerAlt /> Get Direction
-                            </button>
-                    {/* <p className="text-xs text-gray-500 mt-1">
-                      {selectedRequest.latitude}, {selectedRequest.longitude}
-                    </p> */}
+                    {reverseLoading ? (
+                      <p className="mt-1 text-gray-600">Loading location...</p>
+                    ) : (
+                      <p className="mt-1 text-gray-800" style={{ display: 'none', marginTop: '0.25rem' }}>{reverseAddress}</p>
+                    )}
+                    {selectedRequest.latitude && selectedRequest.longitude && (
+                      <button
+                        onClick={() => {
+                          const mapUrl = `https://www.google.com/maps?q=${selectedRequest.latitude},${selectedRequest.longitude}`;
+                          window.open(mapUrl, "_blank", "noopener,noreferrer");
+                        }}
+                        className="mt-2 px-4 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 flex items-center gap-2"
+                      >
+                        <FaMapMarkerAlt /> Get Directions
+                      </button>
+                    )}
                   </div>
 
                   {selectedRequest.service_details?.description && (

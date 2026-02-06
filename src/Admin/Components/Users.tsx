@@ -1,7 +1,22 @@
 import { useState, useEffect } from "react";
 import { getUsers, getUserDetails } from "../../Api/Auth";
 import Loader from "../../Component/Loader/Loader";
-import { FaSearch, FaEye, FaTimes, FaPhoneAlt, FaEnvelope, FaMapMarkerAlt, FaCalendarAlt, FaUser, FaIdCard, FaMapPin, FaBirthdayCake, FaCalendarDay, FaCog, FaHistory } from "react-icons/fa";
+import {
+  FaSearch,
+  FaEye,
+  FaTimes,
+  FaPhoneAlt,
+  FaEnvelope,
+  FaMapMarkerAlt,
+  FaCalendarAlt,
+  FaUser,
+  FaIdCard,
+  FaMapPin,
+  FaBirthdayCake,
+  FaCalendarDay,
+  FaCog,
+  FaHistory,
+} from "react-icons/fa";
 
 // Basic user (from list endpoint)
 interface User {
@@ -17,7 +32,7 @@ interface User {
   profile_picture_url?: string | null;
 }
 
-// Detailed user response structure from getUserDetails
+// Detailed user response structure
 interface UserDetailResponse {
   user: {
     id: number;
@@ -80,7 +95,6 @@ export default function Users() {
         const response = await getUsers();
         console.log("Fetched users list:", response);
 
-        // Adjust based on your list API structure
         const userList = response?.results || response?.data?.results || response?.data || response || [];
 
         setUsers(userList);
@@ -95,7 +109,6 @@ export default function Users() {
     fetchUsers();
   }, []);
 
-  // Fetch detailed user info
   useEffect(() => {
     if (!selectedUserId) {
       setUserDetail(null);
@@ -111,7 +124,6 @@ export default function Users() {
         const response = await getUserDetails(selectedUserId);
         console.log("User detail full response:", response);
 
-        // The response is directly the object you showed (no .data wrapper)
         setUserDetail(response);
       } catch (err: any) {
         console.error("Failed to fetch user details:", err);
@@ -235,10 +247,10 @@ export default function Users() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
-                            {user.profile_picture_url || user.profile_picture ? (
+                            {user.profile_picture_url ?? user.profile_picture ? (
                               <img
                                 className="h-10 w-10 rounded-full object-cover"
-                                src={user.profile_picture_url || user.profile_picture}
+                                src={user.profile_picture_url ?? user.profile_picture ?? undefined}
                                 alt=""
                               />
                             ) : (
@@ -263,9 +275,7 @@ export default function Users() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            user.is_active
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
+                            user.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                           }`}
                         >
                           {user.is_active ? "Active" : "Inactive"}
@@ -345,9 +355,9 @@ export default function Users() {
                     {/* Profile Header */}
                     <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 border-b">
                       <div className="flex-shrink-0">
-                        {userDetail.user.profile_picture_url || userDetail.user.profile_picture ? (
+                        {userDetail.user.profile_picture_url ?? userDetail.user.profile_picture ? (
                           <img
-                            src={userDetail.user.profile_picture_url || userDetail.user.profile_picture}
+                            src={userDetail.user.profile_picture_url ?? userDetail.user.profile_picture ?? undefined}
                             alt="Profile"
                             className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-lg"
                           />
@@ -380,7 +390,7 @@ export default function Users() {
                                 : "bg-gray-50 text-gray-700 border border-gray-200"
                             }`}
                           >
-                            <div className={`w-2 h-2 rounded-full ${userDetail.user.is_active ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+                            <div className={`w-2 h-2 rounded-full ${userDetail.user.is_active ? "bg-green-500" : "bg-gray-500"}`}></div>
                             {userDetail.user.is_active ? "Active" : "Inactive"}
                           </span>
 
@@ -517,7 +527,10 @@ export default function Users() {
                         </div>
                         <div className="space-y-4">
                           {userDetail.service_requests.map((req) => (
-                            <div key={req.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-indigo-200 transition-colors">
+                            <div
+                              key={req.id}
+                              className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-indigo-200 transition-colors"
+                            >
                               <div className="flex justify-between items-start">
                                 <div>
                                   <p className="font-medium text-gray-900">
