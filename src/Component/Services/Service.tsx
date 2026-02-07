@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import { listServices, makeRequest } from "../../Api/Service";
 import { profileDetails } from "../../Api/Auth";
 import Loader from "../Loader/Loader";
-import { Mic, MicOff, Upload, Trash2 } from "lucide-react";
 
 // ────────────────────────────────────────────────
-// Interfaces
+// Interfaces (unchanged)
 // ────────────────────────────────────────────────
 interface SubCategory {
   id: number;
@@ -54,7 +53,7 @@ interface UserProfile {
 }
 
 // ────────────────────────────────────────────────
-// Toast Component
+// Toast Component (unchanged)
 // ────────────────────────────────────────────────
 interface ToastProps {
   message: string;
@@ -91,7 +90,7 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
 };
 
 // ────────────────────────────────────────────────
-// Confirmation Popup
+// Confirmation Popup (unchanged)
 // ────────────────────────────────────────────────
 function ConfirmationPopup({
   formData,
@@ -274,7 +273,7 @@ function SubcategoryModal({
 }
 
 // ────────────────────────────────────────────────
-// Booking Modal – with Voice Recording & Multiple Audio Upload
+// Booking Modal (unchanged)
 // ────────────────────────────────────────────────
 function BookingModal({
   category,
@@ -312,89 +311,12 @@ function BookingModal({
     longitude: longitude,
   });
 
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordedAudios, setRecordedAudios] = useState<Blob[]>([]);
-  const [uploadedAudios, setUploadedAudios] = useState<File[]>([]);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioPreviews, setAudioPreviews] = useState<string[]>([]);
-
   const [loading, setLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   useEffect(() => {
-    setFormData((prev) => ({ ...prev, latitude, longitude }));
+    setFormData(prev => ({ ...prev, latitude, longitude }));
   }, [latitude, longitude]);
-
-  useEffect(() => {
-    return () => {
-      audioPreviews.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [audioPreviews]);
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: BlobPart[] = [];
-
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "audio/webm" });
-        setRecordedAudios((prev) => [...prev, blob]);
-        const previewUrl = URL.createObjectURL(blob);
-        setAudioPreviews((prev) => [...prev, previewUrl]);
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-    } catch (err) {
-      console.error("Microphone access error:", err);
-      showToast("Cannot access microphone. Please check permissions.", "error");
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      setMediaRecorder(null);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const newFiles = Array.from(e.target.files).filter((f) => f.type.startsWith("audio/"));
-
-    if (newFiles.length + uploadedAudios.length + recordedAudios.length > 5) {
-      showToast("Maximum 5 audio files allowed", "error");
-      return;
-    }
-
-    setUploadedAudios((prev) => [...prev, ...newFiles]);
-  };
-
-  const removeRecorded = (index: number) => {
-    setRecordedAudios((prev) => prev.filter((_, i) => i !== index));
-    setAudioPreviews((prev) => {
-      URL.revokeObjectURL(prev[index]);
-      return prev.filter((_, i) => i !== index);
-    });
-  };
-
-  const removeUploaded = (index: number) => {
-    setUploadedAudios((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    if (name === "service_description") {
-      setFormData((p) => ({ ...p, service_details: { description: value } }));
-    } else {
-      setFormData((p) => ({ ...p, [name]: value }));
-    }
-  };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -410,32 +332,8 @@ function BookingModal({
     setLoading(true);
 
     try {
-      const fd = new FormData();
-
-      fd.append("mobile_number", formData.mobile_number);
-      fd.append("customer_name", formData.customer_name || "");
-      fd.append("category", formData.category?.toString() || "");
-      if (formData.subcategory) {
-        fd.append("subcategory", formData.subcategory.toString());
-      }
-      fd.append("service_details", JSON.stringify(formData.service_details));
-      fd.append("address", formData.address);
-      fd.append("latitude", formData.latitude);
-      fd.append("longitude", formData.longitude);
-
-      // Attach recorded audio
-      recordedAudios.forEach((blob, i) => {
-        const file = new File([blob], `voice-note-${i + 1}.webm`, { type: "audio/webm" });
-        fd.append("audio", file);
-      });
-
-      // Attach uploaded audio files
-      uploadedAudios.forEach((file) => {
-        fd.append("audio", file);
-      });
-
-      let response = await makeRequest(fd);
-        console.log("Booking request successful:", response);
+       let response =  await makeRequest(formData);
+        console.log('Booking request response:', response);
       if (!initialMobile && formData.mobile_number) {
         onMobileSaved(formData.mobile_number);
       }
@@ -446,6 +344,15 @@ function BookingModal({
       showToast(err.message || "Failed to submit booking. Try again.", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    if (name === "service_description") {
+      setFormData(p => ({ ...p, service_details: { description: value } }));
+    } else {
+      setFormData(p => ({ ...p, [name]: value }));
     }
   };
 
@@ -465,7 +372,9 @@ function BookingModal({
                 Book {category.name}
               </h2>
               {subcategory && (
-                <p className="text-blue-100 text-sm sm:text-base mt-1">{subcategory.name}</p>
+                <p className="text-blue-100 text-sm sm:text-base mt-1">
+                  {subcategory.name}
+                </p>
               )}
             </div>
             <button
@@ -479,7 +388,7 @@ function BookingModal({
           </div>
 
           <div className="overflow-y-auto flex-1">
-            <form id="booking-form" onSubmit={handleFormSubmit} className="p-4 sm:p-6 space-y-5 pb-24">
+            <form id="booking-form" onSubmit={handleFormSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 pb-20 sm:pb-24">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Name</label>
                 <input
@@ -538,92 +447,6 @@ function BookingModal({
                 />
                 <p className="text-xs text-slate-500 text-right mt-1">
                   {formData.service_details.description.length}/500
-                </p>
-              </div>
-
-              {/* Audio recording & upload section */}
-              <div className="space-y-4">
-                <label className="block text-sm font-medium text-slate-700">
-                  Attach Voice Note or Audio Files (optional)
-                </label>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={isRecording ? stopRecording : startRecording}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all ${
-                      isRecording
-                        ? "bg-red-600 text-white hover:bg-red-700 shadow-lg animate-pulse"
-                        : "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
-                    }`}
-                  >
-                    {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
-                    {isRecording ? "Stop Recording" : "Record Voice"}
-                  </button>
-
-                  <label className="flex items-center gap-2 px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl border border-blue-200 cursor-pointer transition">
-                    <Upload size={18} />
-                    <span>Upload Audio Files</span>
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      multiple
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {(recordedAudios.length > 0 || uploadedAudios.length > 0) && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
-                    <p className="text-sm font-medium text-gray-700">
-                      {recordedAudios.length + uploadedAudios.length} audio file(s) attached
-                    </p>
-
-                    {recordedAudios.map((idx) => (
-                      <div
-                        key={`rec-${idx}`}
-                        className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <audio controls src={audioPreviews[idx]} className="h-9 w-48 sm:w-64" />
-                          <span className="text-sm text-gray-600 truncate">Voice note {idx + 1}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeRecorded(idx)}
-                          className="text-red-600 hover:text-red-800 p-1"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    ))}
-
-                    {uploadedAudios.map((file, idx) => (
-                      <div
-                        key={`upload-${idx}`}
-                        className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <span className="text-blue-600">📎</span>
-                          <span className="text-sm text-gray-700 truncate max-w-[220px]">
-                            {file.name}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeUploaded(idx)}
-                          className="text-red-600 hover:text-red-800 p-1"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <p className="text-xs text-slate-500">
-                  Max 5 files • Supported: mp3, wav, m4a, webm, ogg, etc.
                 </p>
               </div>
 
@@ -703,7 +526,7 @@ function BookingModal({
 }
 
 // ────────────────────────────────────────────────
-// Main Service Component
+// Main Service Component – with safe profile fetch
 // ────────────────────────────────────────────────
 export default function Service() {
   const [services, setServices] = useState<ServiceCategory[]>([]);
@@ -717,33 +540,41 @@ export default function Service() {
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Location states
   const [latitude, setLatitude] = useState<string>("");
   const [longitude, setLongitude] = useState<string>("");
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
 
+  // Profile state
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
+        // 1. Check if user is logged in (has access token)
         const accessToken = localStorage.getItem("accessToken");
 
+        // 2. Fetch profile ONLY if token exists
         if (accessToken) {
           try {
             const profileRes = await profileDetails();
             if (profileRes) {
-              setProfile(profileRes as UserProfile);
-              localStorage.setItem("userProfile", JSON.stringify(profileRes));
+              const userData = profileRes as UserProfile;
+              setProfile(userData);
+              localStorage.setItem("userProfile", JSON.stringify(userData));
             }
           } catch (profileErr) {
-            console.warn("Profile fetch failed:", profileErr);
+            console.warn("Profile fetch failed (possibly not logged in or token expired):", profileErr);
+            // Do NOT set error here — just skip profile (treat as guest)
             setProfile(null);
           }
         } else {
+          console.log("No access token found → skipping profile fetch");
           setProfile(null);
         }
 
+        // 3. Always fetch services (public API)
         const servicesData = await listServices();
         const activeServices = (servicesData?.results || []).filter(
           (s: ServiceCategory) => s.is_active
@@ -788,6 +619,7 @@ export default function Service() {
 
   const handleSaveMobile = (newMobile: string) => {
     if (!newMobile || !profile) return;
+
     const updated = { ...profile, phone_number: newMobile };
     setProfile(updated);
     localStorage.setItem("userProfile", JSON.stringify(updated));
@@ -820,7 +652,9 @@ export default function Service() {
     setSelectedSubcategory(null);
   };
 
-  if (loading) return <Loader />;
+  if (loading) {
+    return <Loader />;
+  }
 
   if (error) {
     return (
@@ -855,6 +689,7 @@ export default function Service() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20 relative overflow-hidden">
+        {/* Animated background */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
           {[...Array(15)].map((_, i) => (
             <div
@@ -875,6 +710,7 @@ export default function Service() {
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-8 sm:pt-12">
+          {/* Location status */}
           <div className="mb-6 p-3 bg-white/70 backdrop-blur-sm rounded-xl border border-blue-100 text-sm">
             {locationLoading ? (
               <div className="flex items-center gap-2 text-blue-700">
