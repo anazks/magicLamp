@@ -92,7 +92,7 @@ export default function History() {
     try {
       const response = url
         ? await getAllRequestedServices(url)
-        : await getAllRequestedServices();
+        : await getAllRequestedServices(url);
 
       const data: PaginatedResponse = response.data;
 
