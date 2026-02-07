@@ -580,7 +580,7 @@ function BookingModal({
                       {recordedAudios.length + uploadedAudios.length} audio file(s) attached
                     </p>
 
-                    {recordedAudios.map((blob, idx) => (
+                    {recordedAudios.map((idx) => (
                       <div
                         key={`rec-${idx}`}
                         className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200"
