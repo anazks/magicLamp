@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { getAllRequestedServices, updateRequestStatus } from "../../Api/Service";
 import axios from "axios";
 import {
@@ -116,7 +116,7 @@ export default function History() {
     try {
       const response = url
         ? await getAllRequestedServices(url)
-        : await getAllRequestedServices();
+        : await getAllRequestedServices(undefined); // Fixed: added undefined parameter
       const data: PaginatedResponse = response.data;
 
       setRequests(data.results || []);
@@ -296,9 +296,9 @@ export default function History() {
 
   // Helper function to get full URL for media file
   const getMediaUrl = (filePath: string) => {
-    // Assuming your backend is serving files from the same origin
-    // If you have a different base URL, adjust this accordingly
-    return filePath.startsWith('http') ? filePath : `${process.env.REACT_APP_API_URL || ''}${filePath}`;
+    // Check if we have a base URL from environment, otherwise use relative path
+    const baseUrl = process.env.REACT_APP_API_URL || '';
+    return filePath.startsWith('http') ? filePath : `${baseUrl}${filePath}`;
   };
 
   const availableActions = (status: RequestStatus): RequestStatus[] => {
@@ -526,7 +526,8 @@ export default function History() {
                                             alt="Media"
                                             className="w-full h-full object-cover"
                                             onError={(e) => {
-                                              e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f3f4f6"/><text x="50" y="50" font-family="Arial" font-size="12" fill="%236b7280" text-anchor="middle" dy=".3em">IMG</text></svg>';
+                                              const target = e.currentTarget;
+                                              target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f3f4f6"/><text x="50" y="50" font-family="Arial" font-size="12" fill="%236b7280" text-anchor="middle" dy=".3em">IMG</text></svg>';
                                             }}
                                           />
                                         </div>
@@ -734,7 +735,8 @@ export default function History() {
                                   alt={`Media ${media.id}`}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
-                                    e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f3f4f6"/><text x="50" y="50" font-family="Arial" font-size="10" fill="%236b7280" text-anchor="middle" dy=".3em">Image</text></svg>';
+                                    const target = e.currentTarget;
+                                    target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f3f4f6"/><text x="50" y="50" font-family="Arial" font-size="10" fill="%236b7280" text-anchor="middle" dy=".3em">Image</text></svg>';
                                   }}
                                 />
                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity flex items-center justify-center">
@@ -869,7 +871,8 @@ export default function History() {
                     alt="Preview"
                     className="max-w-full max-h-[85vh] object-contain rounded-lg"
                     onError={(e) => {
-                      e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="%23f3f4f6"/><text x="200" y="150" font-family="Arial" font-size="16" fill="%236b7280" text-anchor="middle" dy=".3em">Image not available</text></svg>';
+                      const target = e.currentTarget;
+                      target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="%23f3f4f6"/><text x="200" y="150" font-family="Arial" font-size="16" fill="%236b7280" text-anchor="middle" dy=".3em">Image not available</text></svg>';
                     }}
                   />
                 </div>
