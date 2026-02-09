@@ -62,31 +62,41 @@ export const profileDetails = async () => {
 
 
 
-export const updateProfile = async (data: any) => {
-  try {
-    const response = await Axios.patch(
-      '/home/profile/update/',
-      data,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          // If you use JWT / Bearer token:
-          // 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
-        },
-      }
-    );
 
-    console.log('Profile update success:', response.data);
+
+export const updateProfile = async (data: Partial<ProfileData>) => {
+  try {
+    const formData = new FormData();
+
+    // Only append fields that are provided
+    if (data.first_name !== undefined) formData.append('first_name', data.first_name.trim());
+    if (data.last_name !== undefined) formData.append('last_name', data.last_name.trim());
+    if (data.phone_number !== undefined) formData.append('phone_number', data.phone_number.trim());
+    if (data.date_of_birth !== undefined) formData.append('date_of_birth', data.date_of_birth);
+    if (data.district !== undefined) formData.append('district', data.district.trim());
+    if (data.state !== undefined) formData.append('state', data.state.trim());
+    if (data.address !== undefined) formData.append('address', data.address.trim());
+    if (data.pin_code !== undefined && data.pin_code !== null) {
+      formData.append('pin_code', String(data.pin_code));
+    }
+
+    // If profile picture upload is added later:
+    // if (data.profile_picture instanceof File) {
+    //   formData.append('profile_picture', data.profile_picture);
+    // }
+
+    const response = await Axios.patch('/home/profile/update/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
     return response.data;
   } catch (error: any) {
     console.error('Profile update failed:', error.response?.data || error.message);
-    if (error.response?.status === 415) {
-      console.error('415 Unsupported Media Type → Content-Type was missing or incorrect');
-    }
     throw error;
   }
 };
-
 export const googleAuth = async (data: any) => {
         try {
                 let dataObj = {

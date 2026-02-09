@@ -17,7 +17,7 @@ interface ProfileData {
   profile_picture?: string;
   date_of_birth?: string;
   pin_code?: number;
-  age?: string;
+  age?: number | string;
   district?: string;
   state?: string;
   address?: string;
@@ -30,12 +30,13 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
 
     if (!token) {
       setIsGuest(true);
@@ -46,11 +47,12 @@ export default function Profile() {
     const fetchProfile = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await profileDetails();
         setProfile(data);
         setFormData(data);
       } catch (err: any) {
-        setError(err.message || 'Failed to load profile');
+        setError(err.message || 'Failed to load profile. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -77,16 +79,46 @@ export default function Profile() {
     }));
   };
 
+  // Validation function to check if all required fields are filled
+  const isFormValid = (): boolean => {
+    const requiredFields = {
+      first_name: formData.first_name?.trim(),
+      last_name: formData.last_name?.trim(),
+      phone_number: formData.phone_number?.trim(),
+      date_of_birth: formData.date_of_birth,
+      address: formData.address?.trim(),
+      district: formData.district?.trim(),
+      state: formData.state?.trim(),
+      pin_code: formData.pin_code,
+    };
+
+    // Check if all required fields have values
+    const allFieldsFilled = Object.values(requiredFields).every(
+      (value) => value !== undefined && value !== '' && value !== null
+    );
+
+    // Validate phone number format
+    const isPhoneValid =
+      formData.phone_number && /^\+?\d{9,15}$/.test(formData.phone_number);
+
+    // Validate pin code (assuming 6 digits for Indian pin codes)
+    const isPinCodeValid =
+      formData.pin_code && formData.pin_code.toString().length === 6;
+
+    return allFieldsFilled && isPhoneValid && isPinCodeValid;
+  };
+
   const handleSave = async () => {
-    if (
-      formData.phone_number &&
-      !/^\+?\d{9,15}$/.test(formData.phone_number)
-    ) {
-      alert('Please enter a valid phone number (9-15 digits)');
+    setSaveError(null);
+
+    // Validate before saving
+    if (!isFormValid()) {
+      setSaveError('Please fill in all required fields with valid data');
       return;
     }
 
     setSaving(true);
+
     try {
       const updated = await updateProfile(formData);
       setProfile(updated);
@@ -94,7 +126,15 @@ export default function Profile() {
       setIsEditing(false);
       alert('Profile updated successfully!');
     } catch (err: any) {
-      alert(err.message || 'Failed to update profile.');
+      const backendError =
+        err.response?.data?.detail ||
+        err.response?.data?.non_field_errors?.[0] ||
+        err.response?.data?.phone_number?.[0] ||
+        err.response?.data?.first_name?.[0] ||
+        'Failed to update profile. Please check your input and try again.';
+      
+      setSaveError(backendError);
+      console.error('Profile update error:', err);
     } finally {
       setSaving(false);
     }
@@ -103,6 +143,7 @@ export default function Profile() {
   const handleCancel = () => {
     setFormData(profile);
     setIsEditing(false);
+    setSaveError(null);
   };
 
   const handleLogout = () => {
@@ -120,9 +161,7 @@ export default function Profile() {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mb-6">
               <FaUser size={28} />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-3">
-              Guest Mode
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">Guest Mode</h1>
             <p className="text-gray-600 mb-8">
               Please log in to view and edit your profile
             </p>
@@ -150,9 +189,7 @@ export default function Profile() {
   }
 
   if (loading) {
-    return (
-      <Loader/>
-    );
+    return <Loader />;
   }
 
   if (error) {
@@ -172,19 +209,18 @@ export default function Profile() {
   }
 
   const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User';
+  const isSaveDisabled = !isFormValid() || saving;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">
-          My Profile
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">My Profile</h1>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {/* Profile Header */}
           <div className="p-6 border-b bg-gray-50">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-3xl font-bold text-gray-600">
+              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-3xl font-bold text-gray-600 overflow-hidden">
                 {fullName.charAt(0).toUpperCase()}
               </div>
 
@@ -197,12 +233,19 @@ export default function Profile() {
             </div>
           </div>
 
+          {/* Error message when saving */}
+          {saveError && (
+            <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+              {saveError}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="p-6 border-b flex flex-wrap gap-4">
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
                 <FaEdit />
                 Edit Profile
@@ -211,21 +254,30 @@ export default function Profile() {
               <>
                 <button
                   onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  disabled={isSaveDisabled}
+                  className={`flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg transition ${
+                    isSaveDisabled
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:bg-green-700'
+                  }`}
+                  title={
+                    !isFormValid() && !saving
+                      ? 'Please fill all required fields correctly'
+                      : ''
+                  }
                 >
                   {saving ? (
                     <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
                   ) : (
                     <FaSave />
                   )}
-                  Save
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
 
                 <button
                   onClick={handleCancel}
                   disabled={saving}
-                  className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-60 transition"
                 >
                   <FaTimes />
                   Cancel
@@ -235,7 +287,7 @@ export default function Profile() {
 
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-5 py-2.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 ml-auto"
+              className="flex items-center gap-2 px-5 py-2.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 ml-auto transition"
             >
               <FaSignOutAlt />
               Logout
@@ -248,7 +300,7 @@ export default function Profile() {
               {/* First Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  First Name
+                  First Name <span className="text-red-500">*</span>
                 </label>
                 {isEditing ? (
                   <input
@@ -256,17 +308,18 @@ export default function Profile() {
                     name="first_name"
                     value={formData.first_name || ''}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                    required
                   />
                 ) : (
-                  <p className="text-gray-900">{profile.first_name || '—'}</p>
+                  <p className="text-gray-900 font-medium">{profile.first_name || '—'}</p>
                 )}
               </div>
 
               {/* Last Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Last Name
+                  Last Name <span className="text-red-500">*</span>
                 </label>
                 {isEditing ? (
                   <input
@@ -274,17 +327,18 @@ export default function Profile() {
                     name="last_name"
                     value={formData.last_name || ''}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                    required
                   />
                 ) : (
-                  <p className="text-gray-900">{profile.last_name || '—'}</p>
+                  <p className="text-gray-900 font-medium">{profile.last_name || '—'}</p>
                 )}
               </div>
 
-              {/* Phone */}
+              {/* Phone Number */}
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Phone Number
+                  Phone Number <span className="text-red-500">*</span>
                 </label>
                 {isEditing ? (
                   <input
@@ -292,17 +346,22 @@ export default function Profile() {
                     name="phone_number"
                     value={formData.phone_number || ''}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                    placeholder="+91xxxxxxxxxx"
+                    required
                   />
                 ) : (
-                  <p className="text-gray-900">{profile.phone_number || 'Not set'}</p>
+                  <p className="text-gray-900 font-medium">{profile.phone_number || 'Not set'}</p>
+                )}
+                {isEditing && formData.phone_number && !/^\+?\d{9,15}$/.test(formData.phone_number) && (
+                  <p className="text-red-500 text-xs mt-1">Enter 9-15 digits</p>
                 )}
               </div>
 
               {/* Date of Birth */}
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Date of Birth
+                  Date of Birth <span className="text-red-500">*</span>
                 </label>
                 {isEditing ? (
                   <input
@@ -310,10 +369,11 @@ export default function Profile() {
                     name="date_of_birth"
                     value={formData.date_of_birth || ''}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                    required
                   />
                 ) : (
-                  <p className="text-gray-900">
+                  <p className="text-gray-900 font-medium">
                     {profile.date_of_birth
                       ? new Date(profile.date_of_birth).toLocaleDateString('en-IN')
                       : 'Not set'}
@@ -321,18 +381,16 @@ export default function Profile() {
                 )}
               </div>
 
-              {/* Age */}
+              {/* Age (read-only) */}
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Age
-                </label>
-                <p className="text-gray-900">{profile.age || '—'}</p>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Age</label>
+                <p className="text-gray-900 font-medium">{profile.age || '—'}</p>
               </div>
 
               {/* Full Address */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Full Address
+                  Full Address <span className="text-red-500">*</span>
                 </label>
                 {isEditing ? (
                   <textarea
@@ -340,10 +398,12 @@ export default function Profile() {
                     value={formData.address || ''}
                     onChange={handleInputChange}
                     rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none resize-none"
+                    placeholder="House name, street, city..."
+                    required
                   />
                 ) : (
-                  <p className="text-gray-900 whitespace-pre-line">
+                  <p className="text-gray-900 whitespace-pre-line font-medium">
                     {profile.address || 'Not set'}
                   </p>
                 )}
@@ -352,7 +412,7 @@ export default function Profile() {
               {/* District */}
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  District
+                  District <span className="text-red-500">*</span>
                 </label>
                 {isEditing ? (
                   <input
@@ -360,17 +420,18 @@ export default function Profile() {
                     name="district"
                     value={formData.district || ''}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                    required
                   />
                 ) : (
-                  <p className="text-gray-900">{profile.district || '—'}</p>
+                  <p className="text-gray-900 font-medium">{profile.district || '—'}</p>
                 )}
               </div>
 
               {/* State */}
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  State
+                  State <span className="text-red-500">*</span>
                 </label>
                 {isEditing ? (
                   <input
@@ -378,17 +439,18 @@ export default function Profile() {
                     name="state"
                     value={formData.state || ''}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                    required
                   />
                 ) : (
-                  <p className="text-gray-900">{profile.state || '—'}</p>
+                  <p className="text-gray-900 font-medium">{profile.state || '—'}</p>
                 )}
               </div>
 
               {/* Pin Code */}
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Pin Code
+                  Pin Code <span className="text-red-500">*</span>
                 </label>
                 {isEditing ? (
                   <input
@@ -396,10 +458,15 @@ export default function Profile() {
                     name="pin_code"
                     value={formData.pin_code ?? ''}
                     onChange={handleNumberChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                    placeholder="6xxxxxxxxx"
+                    required
                   />
                 ) : (
-                  <p className="text-gray-900">{profile.pin_code || '—'}</p>
+                  <p className="text-gray-900 font-medium">{profile.pin_code || '—'}</p>
+                )}
+                {isEditing && formData.pin_code && formData.pin_code.toString().length !== 6 && (
+                  <p className="text-red-500 text-xs mt-1">Pin code must be 6 digits</p>
                 )}
               </div>
             </div>

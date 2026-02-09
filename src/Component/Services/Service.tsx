@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { listServices, makeRequest } from "../../Api/Service";
 import { profileDetails } from "../../Api/Auth";
 import Loader from "../Loader/Loader";
 
 // ────────────────────────────────────────────────
-// Interfaces (unchanged)
+// Interfaces
 // ────────────────────────────────────────────────
 interface SubCategory {
   id: number;
@@ -37,6 +37,7 @@ interface BookingFormData {
   address: string;
   latitude: string;
   longitude: string;
+  images: File[];
 }
 
 interface UserProfile {
@@ -53,7 +54,7 @@ interface UserProfile {
 }
 
 // ────────────────────────────────────────────────
-// Toast Component (unchanged)
+// Toast Component
 // ────────────────────────────────────────────────
 interface ToastProps {
   message: string;
@@ -90,7 +91,55 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
 };
 
 // ────────────────────────────────────────────────
-// Confirmation Popup (unchanged)
+// Image Preview Modal
+// ────────────────────────────────────────────────
+interface ImagePreviewModalProps {
+  images: { file: File; previewUrl: string }[];
+  onClose: () => void;
+  onRemove: (index: number) => void;
+}
+
+const ImagePreviewModal = ({ images, onClose, onRemove }: ImagePreviewModalProps) => {
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10002] p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex justify-between items-center">
+          <h3 className="text-xl font-bold">Image Preview ({images.length})</h3>
+          <button onClick={onClose} className="text-white/80 hover:text-white transition">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {images.map((img, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={img.previewUrl}
+                  alt={`Preview ${index + 1}`}
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+                <button
+                  onClick={() => onRemove(index)}
+                  className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ────────────────────────────────────────────────
+// Confirmation Popup
 // ────────────────────────────────────────────────
 function ConfirmationPopup({
   formData,
@@ -99,6 +148,7 @@ function ConfirmationPopup({
   onConfirm,
   onCancel,
   loading,
+  imagePreviews,
 }: {
   formData: BookingFormData;
   categoryName: string;
@@ -106,6 +156,7 @@ function ConfirmationPopup({
   onConfirm: () => void;
   onCancel: () => void;
   loading: boolean;
+  imagePreviews: { file: File; previewUrl: string }[];
 }) {
   return (
     <div
@@ -113,7 +164,7 @@ function ConfirmationPopup({
       onClick={onCancel}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 sm:p-8">
@@ -150,6 +201,27 @@ function ConfirmationPopup({
               <div>
                 <p className="text-slate-500 font-medium">Service Details / Requirements</p>
                 <p className="mt-1 whitespace-pre-wrap">{formData.service_details.description}</p>
+              </div>
+            )}
+
+            {imagePreviews.length > 0 && (
+              <div>
+                <p className="text-slate-500 font-medium">Images ({imagePreviews.length})</p>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {imagePreviews.slice(0, 3).map((img, index) => (
+                    <img
+                      key={index}
+                      src={img.previewUrl}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-20 object-cover rounded-lg"
+                    />
+                  ))}
+                  {imagePreviews.length > 3 && (
+                    <div className="h-20 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <span className="text-gray-500">+{imagePreviews.length - 3} more</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -197,7 +269,7 @@ function ConfirmationPopup({
 }
 
 // ────────────────────────────────────────────────
-// Subcategory Modal (unchanged)
+// Subcategory Modal
 // ────────────────────────────────────────────────
 function SubcategoryModal({
   category,
@@ -273,7 +345,7 @@ function SubcategoryModal({
 }
 
 // ────────────────────────────────────────────────
-// Booking Modal (unchanged)
+// Booking Modal – with saved user info feature
 // ────────────────────────────────────────────────
 function BookingModal({
   category,
@@ -309,10 +381,63 @@ function BookingModal({
     address: "",
     latitude: latitude,
     longitude: longitude,
+    images: [],
   });
 
+  const [imagePreviews, setImagePreviews] = useState<{ file: File; previewUrl: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ─── Saved user info feature ────────────────────────────────
+  const [useSavedInfo, setUseSavedInfo] = useState<boolean | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+
+  const SAVED_BOOKING_KEY = "lastBookingPersonalInfo";
+
+  useEffect(() => {
+    const saved = localStorage.getItem(SAVED_BOOKING_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Partial<Pick<BookingFormData, "customer_name" | "mobile_number" | "address">>;
+
+        setFormData(prev => ({
+          ...prev,
+          customer_name: parsed.customer_name || prev.customer_name || "",
+          mobile_number: parsed.mobile_number || prev.mobile_number || "",
+          address: parsed.address || prev.address || "",
+        }));
+
+        // Auto-suggest using saved data if we have at least address + phone
+        if (parsed.address?.trim() && parsed.mobile_number?.trim()) {
+          setUseSavedInfo(true);
+        } else {
+          setUseSavedInfo(false);
+        }
+      } catch (err) {
+        console.warn("Cannot parse saved booking info", err);
+        setUseSavedInfo(false);
+      }
+    } else {
+      setUseSavedInfo(false);
+    }
+  }, []);
+
+  const savePersonalInfo = () => {
+    const infoToSave = {
+      customer_name: formData.customer_name.trim(),
+      mobile_number: formData.mobile_number.trim(),
+      address: formData.address.trim(),
+    };
+
+    // Save only if there's meaningful data
+    if (infoToSave.customer_name || infoToSave.mobile_number || infoToSave.address) {
+      localStorage.setItem(SAVED_BOOKING_KEY, JSON.stringify(infoToSave));
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
     setFormData(prev => ({ ...prev, latitude, longitude }));
@@ -320,7 +445,7 @@ function BookingModal({
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.mobile_number || !formData.address || !formData.latitude) {
+    if (!formData.mobile_number.trim() || !formData.address.trim() || !formData.latitude) {
       showToast("Please fill required fields and allow location access", "error");
       return;
     }
@@ -332,16 +457,51 @@ function BookingModal({
     setLoading(true);
 
     try {
-       let response =  await makeRequest(formData);
-        console.log('Booking request response:', response);
-      if (!initialMobile && formData.mobile_number) {
-        onMobileSaved(formData.mobile_number);
+      const formDataToSend = new FormData();
+
+      formDataToSend.append('mobile_number', formData.mobile_number.trim());
+      formDataToSend.append('customer_name', formData.customer_name.trim());
+      formDataToSend.append('category', formData.category?.toString() || '');
+      if (formData.subcategory) {
+        formDataToSend.append('subcategory', formData.subcategory.toString());
+      }
+      formDataToSend.append(
+        'service_details',
+        JSON.stringify({ description: formData.service_details.description.trim() || '' })
+      );
+      formDataToSend.append('address', formData.address.trim());
+      formDataToSend.append('latitude', formData.latitude);
+      formDataToSend.append('longitude', formData.longitude);
+
+      formData.images.forEach(image => {
+        formDataToSend.append('images', image, image.name);
+      });
+
+      await makeRequest(formDataToSend);
+
+      // Save after successful submission
+      savePersonalInfo();
+
+      if (!initialMobile && formData.mobile_number.trim()) {
+        onMobileSaved(formData.mobile_number.trim());
       }
 
       showToast("Booking submitted successfully!", "success");
       onClose();
     } catch (err: any) {
-      showToast(err.message || "Failed to submit booking. Try again.", "error");
+      console.error('Booking error:', err);
+      let errorMessage = "Failed to submit booking. Try again.";
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (typeof errorData === 'object') {
+          errorMessage = Object.entries(errorData)
+            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+            .join('; ') || errorMessage;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      }
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -354,6 +514,57 @@ function BookingModal({
     } else {
       setFormData(p => ({ ...p, [name]: value }));
     }
+  };
+
+  const handleUseSaved = () => {
+    setUseSavedInfo(true);
+    setShowEditForm(false);
+  };
+
+  const handleChangeInfo = () => {
+    setUseSavedInfo(false);
+    setShowEditForm(true);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const maxImages = 10;
+
+    if (formData.images.length + files.length > maxImages) {
+      showToast(`Maximum ${maxImages} images allowed`, 'error');
+      return;
+    }
+
+    Array.from(files).forEach(file => {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast(`${file.name} exceeds 5MB limit`, 'error');
+        return;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, file]
+      }));
+
+      setImagePreviews(prev => [...prev, { file, previewUrl }]);
+    });
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeImage = (index: number) => {
+    URL.revokeObjectURL(imagePreviews[index].previewUrl);
+
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -387,62 +598,119 @@ function BookingModal({
             </button>
           </div>
 
-          <div className="overflow-y-auto flex-1">
-            <form id="booking-form" onSubmit={handleFormSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 pb-20 sm:pb-24">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Name</label>
-                <input
-                  type="text"
-                  name="customer_name"
-                  value={formData.customer_name}
-                  onChange={handleChange}
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                  placeholder="Your name"
-                />
+          <div className="overflow-y-auto flex-1 p-5 sm:p-6 space-y-6">
+            {/* Saved info prompt */}
+            {useSavedInfo === null && (formData.customer_name.trim() || formData.mobile_number.trim() || formData.address.trim()) ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 shadow-sm">
+                <p className="font-semibold text-blue-800 mb-3 text-lg">
+                  We found your previous booking details
+                </p>
+                <div className="space-y-2 text-sm text-gray-700 mb-4">
+                  {formData.customer_name.trim() && <p><strong>Name:</strong> {formData.customer_name}</p>}
+                  {formData.mobile_number.trim() && <p><strong>Mobile:</strong> {formData.mobile_number}</p>}
+                  {formData.address.trim() && <p><strong>Address:</strong> {formData.address}</p>}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={handleUseSaved}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-5 rounded-xl transition"
+                  >
+                    Use these details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleChangeInfo}
+                    className="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-medium py-3 px-5 rounded-xl transition"
+                  >
+                    Use different details
+                  </button>
+                </div>
               </div>
+            ) : null}
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Mobile {initialMobile ? "" : "*"}
-                </label>
-                <input
-                  type="tel"
-                  name="mobile_number"
-                  value={formData.mobile_number}
-                  onChange={handleChange}
-                  required={!initialMobile}
-                  maxLength={10}
-                  pattern="[0-9]{10}"
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                  placeholder="10-digit mobile number"
-                />
-                {initialMobile && (
-                  <p className="text-xs text-slate-500 mt-1">Using registered number</p>
-                )}
-              </div>
+            <form id="booking-form" onSubmit={handleFormSubmit} className="space-y-5">
+              {/* Editable fields */}
+              {(useSavedInfo === false || showEditForm) && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Name</label>
+                    <input
+                      type="text"
+                      name="customer_name"
+                      value={formData.customer_name}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
+                      placeholder="Your full name"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Address *</label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                  placeholder="Your complete address"
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Mobile {initialMobile ? "" : "*"}
+                    </label>
+                    <input
+                      type="tel"
+                      name="mobile_number"
+                      value={formData.mobile_number}
+                      onChange={handleChange}
+                      required={!initialMobile}
+                      maxLength={10}
+                      pattern="[0-9]{10}"
+                      className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
+                      placeholder="10-digit mobile number"
+                    />
+                  </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Address *</label>
+                    <input
+                      type="text"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
+                      placeholder="Your complete address"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Read-only summary when using saved info */}
+              {useSavedInfo === true && !showEditForm && (
+                <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <p className="font-semibold text-green-800">Using saved information</p>
+                  </div>
+                  <div className="space-y-2 text-sm text-gray-800">
+                    {formData.customer_name.trim() && <p><strong>Name:</strong> {formData.customer_name}</p>}
+                    {formData.mobile_number.trim() && <p><strong>Mobile:</strong> {formData.mobile_number}</p>}
+                    {formData.address.trim() && <p><strong>Address:</strong> {formData.address}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditForm(true)}
+                    className="mt-4 text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                  >
+                    Edit these details
+                  </button>
+                </div>
+              )}
+
+              {/* Service Details */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Service Details</label>
                 <textarea
                   name="service_description"
                   value={formData.service_details.description}
                   onChange={handleChange}
-                  rows={3}
+                  rows={4}
                   maxLength={500}
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition resize-none"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none"
                   placeholder="Describe what you need..."
                 />
                 <p className="text-xs text-slate-500 text-right mt-1">
@@ -450,28 +718,94 @@ function BookingModal({
                 </p>
               </div>
 
-              <div className="bg-white/80 backdrop-blur-sm p-3 sm:p-4 rounded-lg sm:rounded-xl border border-blue-100">
+              {/* Images */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Upload Images (Optional)
+                </label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full p-5 border-2 border-dashed border-green-300 rounded-xl hover:border-green-500 hover:bg-green-50 transition-colors flex flex-col items-center justify-center gap-2"
+                  >
+                    <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-green-600 font-medium">Upload Images</span>
+                    <span className="text-sm text-slate-500">max 5MB each, max 10 images</span>
+                  </button>
+
+                  {imagePreviews.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-600">
+                          {imagePreviews.length} image{imagePreviews.length !== 1 ? 's' : ''} selected
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowImagePreview(true)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          View All
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {imagePreviews.slice(0, 3).map((img, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={img.previewUrl}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-20 object-cover rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Location status */}
+              <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-blue-100">
                 {latitude && longitude ? (
-                  <div className="text-green-700 font-medium flex items-center gap-2 text-sm sm:text-base">
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <div className="text-green-700 font-medium flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM5 10a5 5 0 1110 0v.5a.5.5 0 01-.5.5h-9a.5.5 0 01-.5-.5V10z" clipRule="evenodd" />
                     </svg>
                     Location captured
                   </div>
                 ) : locationError ? (
-                  <div className="text-red-600 flex items-center justify-between text-sm sm:text-base">
+                  <div className="text-red-600 flex items-center justify-between">
                     <span>{locationError}</span>
                     <button
                       type="button"
                       onClick={retryLocation}
-                      className="text-blue-600 underline text-xs sm:text-sm hover:text-blue-800"
+                      className="text-blue-600 underline text-sm hover:text-blue-800"
                     >
                       Retry
                     </button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 text-blue-700">
-                    <div className="animate-spin h-4 w-4 sm:h-5 sm:w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                    <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
                     Fetching location...
                   </div>
                 )}
@@ -480,23 +814,23 @@ function BookingModal({
           </div>
 
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 border-t border-blue-500/30 p-4 sm:p-6 sticky bottom-0 z-20">
-            <div className="flex gap-3 sm:gap-4 max-w-md mx-auto">
+            <div className="flex gap-4 max-w-md mx-auto">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2.5 sm:py-3 bg-white/10 backdrop-blur-sm text-white border border-white/30 rounded-lg sm:rounded-xl hover:bg-white/20 transition text-sm sm:text-base"
+                className="flex-1 py-3 bg-white/10 backdrop-blur-sm text-white border border-white/30 rounded-xl hover:bg-white/20 transition text-base"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 form="booking-form"
-                disabled={loading || !latitude || !longitude || (!initialMobile && !formData.mobile_number)}
-                className="flex-1 py-2.5 sm:py-3 bg-white text-blue-600 rounded-lg sm:rounded-xl hover:bg-blue-50 transition disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base font-semibold"
+                disabled={loading || !latitude || !longitude || (!initialMobile && !formData.mobile_number.trim())}
+                className="flex-1 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition disabled:opacity-50 flex items-center justify-center gap-2 text-base font-semibold shadow-md"
               >
                 {loading ? (
                   <>
-                    <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-blue-600" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-5 w-5 text-blue-600" viewBox="0 0 24 24">
                       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" className="opacity-25" />
                       <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" className="opacity-75" />
                     </svg>
@@ -511,6 +845,14 @@ function BookingModal({
         </div>
       </div>
 
+      {showImagePreview && (
+        <ImagePreviewModal
+          images={imagePreviews}
+          onClose={() => setShowImagePreview(false)}
+          onRemove={removeImage}
+        />
+      )}
+
       {showConfirmation && (
         <ConfirmationPopup
           formData={formData}
@@ -519,6 +861,7 @@ function BookingModal({
           onConfirm={handleConfirm}
           onCancel={() => setShowConfirmation(false)}
           loading={loading}
+          imagePreviews={imagePreviews}
         />
       )}
     </>
@@ -526,7 +869,7 @@ function BookingModal({
 }
 
 // ────────────────────────────────────────────────
-// Main Service Component – with safe profile fetch
+// Main Component (Service)
 // ────────────────────────────────────────────────
 export default function Service() {
   const [services, setServices] = useState<ServiceCategory[]>([]);
@@ -540,22 +883,18 @@ export default function Service() {
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Location states
   const [latitude, setLatitude] = useState<string>("");
   const [longitude, setLongitude] = useState<string>("");
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
 
-  // Profile state
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        // 1. Check if user is logged in (has access token)
         const accessToken = localStorage.getItem("accessToken");
 
-        // 2. Fetch profile ONLY if token exists
         if (accessToken) {
           try {
             const profileRes = await profileDetails();
@@ -565,22 +904,16 @@ export default function Service() {
               localStorage.setItem("userProfile", JSON.stringify(userData));
             }
           } catch (profileErr) {
-            console.warn("Profile fetch failed (possibly not logged in or token expired):", profileErr);
-            // Do NOT set error here — just skip profile (treat as guest)
-            setProfile(null);
+            console.warn("Profile fetch failed:", profileErr);
           }
-        } else {
-          console.log("No access token found → skipping profile fetch");
-          setProfile(null);
         }
 
-        // 3. Always fetch services (public API)
         const servicesData = await listServices();
         const activeServices = (servicesData?.results || []).filter(
           (s: ServiceCategory) => s.is_active
         );
         setServices(activeServices);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to load services:", err);
         setError("Failed to load services. Please try again.");
       } finally {
@@ -609,7 +942,7 @@ export default function Service() {
       },
       (err) => {
         setLocationError(
-          err.code === 1 ? "Location access was denied" : "Unable to get location"
+          err.code === 1 ? "Location access denied" : "Unable to get location"
         );
         setLocationLoading(false);
       },
@@ -619,7 +952,6 @@ export default function Service() {
 
   const handleSaveMobile = (newMobile: string) => {
     if (!newMobile || !profile) return;
-
     const updated = { ...profile, phone_number: newMobile };
     setProfile(updated);
     localStorage.setItem("userProfile", JSON.stringify(updated));
@@ -652,27 +984,17 @@ export default function Service() {
     setSelectedSubcategory(null);
   };
 
-  if (loading) {
-    return <Loader />;
-  }
+  if (loading) return <Loader />;
 
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div className="relative mb-6">
-            <div className="absolute inset-0 bg-red-100 rounded-full blur-xl opacity-30"></div>
-            <div className="relative w-16 h-16 mx-auto bg-gradient-to-br from-red-100 to-red-200 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
           <h2 className="text-2xl font-bold text-slate-800 mb-3">Oops!</h2>
           <p className="text-slate-600 mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all hover:scale-[1.02]"
+            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl"
           >
             Try Again
           </button>
@@ -689,28 +1011,7 @@ export default function Service() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20 relative overflow-hidden">
-        {/* Animated background */}
-        <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          {[...Array(15)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute rounded-full bg-blue-200/20 animate-float"
-              style={{
-                width: `${Math.random() * 20 + 5}px`,
-                height: `${Math.random() * 20 + 5}px`,
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 5}s`,
-                animationDuration: `${Math.random() * 10 + 15}s`,
-              }}
-            />
-          ))}
-          <div className="absolute -top-40 -left-40 w-80 h-80 bg-gradient-to-r from-blue-200/30 to-cyan-200/20 rounded-full blur-3xl animate-pulse-slow"></div>
-          <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-gradient-to-r from-indigo-200/20 to-purple-200/30 rounded-full blur-3xl animate-pulse-slow delay-1000"></div>
-        </div>
-
         <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-8 sm:pt-12">
-          {/* Location status */}
           <div className="mb-6 p-3 bg-white/70 backdrop-blur-sm rounded-xl border border-blue-100 text-sm">
             {locationLoading ? (
               <div className="flex items-center gap-2 text-blue-700">
@@ -805,14 +1106,6 @@ export default function Service() {
       )}
 
       <style>{`
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 0.3; transform: scale(1.05); }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(5deg); }
-        }
         @keyframes slide-up {
           from { transform: translateY(100%); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
@@ -821,8 +1114,6 @@ export default function Service() {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .animate-pulse-slow { animation: pulse-slow 8s ease-in-out infinite; }
-        .animate-float { animation: float 20s ease-in-out infinite; }
         .animate-slide-up { animation: slide-up 0.3s ease-out; }
         .animate-fade-in-up { animation: fade-in-up 0.3s ease-out; }
         .line-clamp-2 {

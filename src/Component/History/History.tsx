@@ -16,6 +16,8 @@ import {
   FaHistory,
   FaLock,
   FaInfoCircle,
+  FaStickyNote, // Added for admin notes icon
+  FaCommentAlt, // Added for admin notes in details
 } from "react-icons/fa";
 
 interface ServiceHistoryItem {
@@ -32,6 +34,7 @@ interface ServiceHistoryItem {
   mobile_number: string;
   customer_name: string;
   category_icon?: string | null;
+  admin_notes?: string; // Added admin_notes field
 }
 
 export default function History() {
@@ -56,7 +59,7 @@ export default function History() {
       try {
         setLoading(true);
         const data = await serviceHistory();
-
+          console.log("Raw service history data:", data); // Debug log
         const transformed = data.map((item: any) => ({
           id: item.id,
           request_id: item.request_id,
@@ -71,6 +74,7 @@ export default function History() {
           mobile_number: item.mobile_number,
           customer_name: item.customer_name,
           category_icon: item.category_icon,
+          admin_notes: item.admin_notes, // Include admin_notes
         }));
 
         setHistory(transformed);
@@ -280,6 +284,28 @@ export default function History() {
                       <p className="leading-relaxed line-clamp-2">{item.address}</p>
                     </div>
 
+                    {/* Admin Notes Preview (if exists) */}
+                    {item.admin_notes && (
+                      <div className="mb-4">
+                        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <FaStickyNote className="text-amber-600 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-amber-800">
+                                Admin Note
+                              </span>
+                              <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                                Staff
+                              </span>
+                            </div>
+                            <p className="text-sm text-amber-700 line-clamp-2">
+                              {item.admin_notes}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Customer Info */}
                     <div className="grid grid-cols-2 sm:flex sm:gap-6 mb-5 text-sm text-gray-700">
                       <div className="flex items-center gap-2">
@@ -376,6 +402,38 @@ export default function History() {
                   })()}
                 </div>
               </div>
+
+              {/* Admin Notes in Detail View */}
+              {selectedItem.admin_notes && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2 flex items-center gap-2">
+                    <FaCommentAlt className="text-amber-600" />
+                    Admin Notes
+                  </h3>
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                          <FaStickyNote className="text-amber-600" size={14} />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-amber-800">
+                            Service Team Notes
+                          </span>
+                          <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full">
+                            STAFF
+                          </span>
+                        </div>
+                        <p className="text-sm text-amber-900 whitespace-pre-wrap leading-relaxed">
+                          {selectedItem.admin_notes}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {selectedItem.description && (
                 <div>

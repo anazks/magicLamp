@@ -54,7 +54,7 @@ export default function BottomBar() {
 
             <div className="flex flex-col text-left">
               <h1 className="text-lg font-bold text-gray-800 leading-tight">Magic Lamp</h1>
-              <p className="text-xs text-gray-500">Your trusted partner</p>
+              <p className="text-xs text-gray-500">Anything. Anytime. Anywhere for You…!</p>
             </div>
           </button>
           <div className="w-10" />
