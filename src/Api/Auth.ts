@@ -64,7 +64,7 @@ export const profileDetails = async () => {
 
 
 
-export const updateProfile = async (data: Partial<ProfileData>) => {
+export const updateProfile = async (data: any) => {
   try {
     const formData = new FormData();
 

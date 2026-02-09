@@ -297,7 +297,7 @@ export default function History() {
   // Helper function to get full URL for media file
   const getMediaUrl = (filePath: string) => {
     // Check if we have a base URL from environment, otherwise use relative path
-    const baseUrl = process.env.REACT_APP_API_URL || '';
+    const baseUrl =  '';
     return filePath.startsWith('http') ? filePath : `${baseUrl}${filePath}`;
   };
 

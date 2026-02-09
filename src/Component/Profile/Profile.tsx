@@ -80,33 +80,31 @@ export default function Profile() {
   };
 
   // Validation function to check if all required fields are filled
-  const isFormValid = (): boolean => {
-    const requiredFields = {
-      first_name: formData.first_name?.trim(),
-      last_name: formData.last_name?.trim(),
-      phone_number: formData.phone_number?.trim(),
-      date_of_birth: formData.date_of_birth,
-      address: formData.address?.trim(),
-      district: formData.district?.trim(),
-      state: formData.state?.trim(),
-      pin_code: formData.pin_code,
-    };
-
-    // Check if all required fields have values
-    const allFieldsFilled = Object.values(requiredFields).every(
-      (value) => value !== undefined && value !== '' && value !== null
-    );
-
-    // Validate phone number format
-    const isPhoneValid =
-      formData.phone_number && /^\+?\d{9,15}$/.test(formData.phone_number);
-
-    // Validate pin code (assuming 6 digits for Indian pin codes)
-    const isPinCodeValid =
-      formData.pin_code && formData.pin_code.toString().length === 6;
-
-    return allFieldsFilled && isPhoneValid && isPinCodeValid;
+const isFormValid = (): boolean => {
+  const requiredFields = {
+    first_name: formData.first_name?.trim(),
+    last_name: formData.last_name?.trim(),
+    phone_number: formData.phone_number?.trim(),
+    date_of_birth: formData.date_of_birth,
+    address: formData.address?.trim(),
+    district: formData.district?.trim(),
+    state: formData.state?.trim(),
+    pin_code: formData.pin_code,
   };
+
+  const allFieldsFilled = Object.values(requiredFields).every(
+    (value) => value !== undefined && value !== '' && value !== null
+  );
+
+  // ✅ Always boolean
+  const isPhoneValid = !!formData.phone_number &&
+    /^\+?\d{9,15}$/.test(formData.phone_number);
+
+  const isPinCodeValid = !!formData.pin_code &&
+    formData.pin_code.toString().length === 6;
+
+  return allFieldsFilled && isPhoneValid && isPinCodeValid;
+};
 
   const handleSave = async () => {
     setSaveError(null);
