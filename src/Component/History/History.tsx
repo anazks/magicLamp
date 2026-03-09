@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { serviceHistory } from "../../Api/Service";
+import { serviceHistory, cancelServiceRequest } from "../../Api/Service";
 import Loader from "../Loader/Loader";
 import { baseURL } from "../../Static/Static";
 import {
@@ -107,6 +107,22 @@ export default function History() {
 
   const handleUpdate = () => {
     fetchHistory();
+  };
+  
+  const handleCancel = async (id: number) => {
+    if (window.confirm("Are you sure you want to cancel this service request?")) {
+      try {
+        setLoading(true);
+        await cancelServiceRequest(id);
+        showToast("Request cancelled successfully", "success");
+        setSelectedItem(null);
+        fetchHistory();
+      } catch (error) {
+        showToast("Failed to cancel request", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   const getStatusStyle = (status: string) => {
@@ -254,9 +270,9 @@ export default function History() {
                   className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden"
                 >
                   <div className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center p-2 border border-gray-200">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center p-2 border border-gray-200 shrink-0">
                           {item.category_icon ? (
                             <img src={item.category_icon} alt="" className="w-full h-full object-contain" />
                           ) : (
@@ -265,17 +281,23 @@ export default function History() {
                             </span>
                           )}
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">#{item.request_id}</p>
-                          <h3 className="text-lg font-bold text-gray-900 leading-tight">
+                          <h3 className="text-lg font-bold text-gray-900 leading-tight truncate" title={item.category_name}>
                             {item.category_name}
                           </h3>
                           {item.subcategory_name && (
-                            <p className="text-sm text-gray-500 font-medium">{item.subcategory_name}</p>
+                            <p className="text-sm text-gray-500 font-medium truncate">{item.subcategory_name}</p>
+                          )}
+                          {isPending && (
+                            <div className="mt-2 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-100 text-[10px] font-bold text-emerald-600 w-fit">
+                              <FaEdit size={8} />
+                              EDITABLE OR CANCELABLE
+                            </div>
                           )}
                         </div>
                       </div>
-                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border} text-xs font-semibold`}>
+                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border} text-xs font-semibold self-start whitespace-nowrap`}>
                         {statusStyle.icon}
                         {statusStyle.label}
                       </div>
@@ -294,27 +316,28 @@ export default function History() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-gray-100">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-xs font-bold">
                           {item.customer_name.charAt(0)}
                         </div>
-                        <span className="text-sm font-medium text-gray-700">{item.customer_name}</span>
+                        <span className="text-sm font-medium text-gray-700 truncate">{item.customer_name}</span>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         {isPending && (
                           <button
                             onClick={() => setEditingItem(item)}
-                            className="p-2.5 flex items-center justify-center bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-200"
+                            className="flex-1 sm:flex-none p-2.5 flex items-center justify-center bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-200"
                             title="Edit Request"
                           >
                             <FaEdit size={14} />
+                            <span className="sm:hidden ml-2 text-xs font-bold">Edit</span>
                           </button>
                         )}
                         <button
                           onClick={() => setSelectedItem(item)}
-                          className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2"
+                          className="flex-[2] sm:flex-none px-5 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2"
                         >
                           View Details
                         </button>
@@ -330,12 +353,12 @@ export default function History() {
 
       {/* Details Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div 
             className="absolute inset-0 bg-black/60 animate-fade-in" 
             onClick={() => setSelectedItem(null)} 
           />
-          <div className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col border border-gray-200">
+          <div className="relative w-full max-w-lg bg-white sm:rounded-xl shadow-2xl overflow-hidden animate-slide-up max-h-[90vh] flex flex-col border border-gray-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
               <div>
@@ -354,12 +377,12 @@ export default function History() {
             <div className="p-6 overflow-y-auto space-y-6 pb-12">
               {/* Status & Service Header */}
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                <div className="flex items-center justify-between gap-4 mb-2">
-                  <h3 className="text-2xl font-bold text-gray-900 leading-none">{selectedItem.category_name}</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight break-words">{selectedItem.category_name}</h3>
                   {(() => {
                     const s = getStatusStyle(selectedItem.status);
                     return (
-                      <div className={`px-4 py-1 rounded-full border ${s.bg} ${s.text} ${s.border} text-xs font-bold uppercase tracking-wider`}>
+                      <div className={`px-4 py-1 rounded-full border ${s.bg} ${s.text} ${s.border} text-[10px] sm:text-xs font-bold uppercase tracking-wider w-fit whitespace-nowrap`}>
                         {s.label}
                       </div>
                     );
@@ -425,7 +448,7 @@ export default function History() {
               {selectedItem.media_files && selectedItem.media_files.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                     <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">Attachments</p>
+                     <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">Uploads</p>
                      <span className="text-[10px] bg-gray-100 px-2 py-1 rounded-full text-gray-600 font-bold uppercase">{selectedItem.media_files.length} ITEMS</span>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
@@ -459,36 +482,49 @@ export default function History() {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-5 border-t border-gray-200 bg-white grid grid-cols-2 gap-3">
-               <button
-                onClick={() => {
-                  const lat = parseFloat(selectedItem.latitude);
-                  const lng = parseFloat(selectedItem.longitude);
-                  if (!isNaN(lat) && !isNaN(lng)) {
-                    window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank");
-                  }
-                }}
-                className="py-3 bg-gray-100 text-gray-700 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-gray-200 transition-all border border-gray-200"
-              >
-                Track on Map
-              </button>
-              {selectedItem.status.toLowerCase() === "pending" ? (
+            <div className="px-6 py-5 pb-24 border-t border-gray-200 bg-white space-y-3">
+              <div className="flex flex-col sm:grid sm:grid-cols-2 gap-3">
                 <button
                   onClick={() => {
-                    setEditingItem(selectedItem);
-                    setSelectedItem(null);
+                    const lat = parseFloat(selectedItem.latitude);
+                    const lng = parseFloat(selectedItem.longitude);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                      window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank");
+                    }
                   }}
-                  className="py-3 bg-blue-600 text-white rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-95"
+                  className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-gray-200 transition-all border border-gray-200"
                 >
-                  Edit Request
+                  <FaMapMarkerAlt size={12} />
+                  Track on Map
                 </button>
-              ) : (
                 <button
                   onClick={() => setSelectedItem(null)}
-                  className="py-3 bg-gray-900 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all active:scale-95"
+                  className="w-full py-3 bg-gray-900 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all active:scale-95 text-center"
                 >
                   Close
                 </button>
+              </div>
+
+              {selectedItem.status.toLowerCase() === "pending" && (
+                <div className="flex flex-col sm:grid sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => {
+                      setEditingItem(selectedItem);
+                      setSelectedItem(null);
+                    }}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-95"
+                  >
+                    <FaEdit size={12} />
+                    Edit Request
+                  </button>
+                  <button
+                    onClick={() => handleCancel(selectedItem.id)}
+                    className="w-full py-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-rose-100 transition-all active:scale-95"
+                  >
+                    <FaTimesCircle size={12} />
+                    Cancel Request
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -525,6 +561,29 @@ export default function History() {
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes slide-up {
+          from { transform: translateY(100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes zoom-in {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slide-down {
+          from { transform: translate(-50%, -100%); opacity: 0; }
+          to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        .animate-slide-up { animation: slide-up 0.3s ease-out; }
+        .animate-fade-in { animation: fade-in 0.3s ease-out; }
+        .animate-zoom-in { animation: zoom-in 0.2s ease-out; }
+        .animate-slide-down { animation: slide-down 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+      `}</style>
     </div>
   );
 }

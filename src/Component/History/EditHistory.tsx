@@ -121,7 +121,7 @@ export default function EditHistory({ item, onClose, onUpdate, showToast }: Edit
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Overlay */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" 
@@ -129,7 +129,7 @@ export default function EditHistory({ item, onClose, onUpdate, showToast }: Edit
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col border border-gray-200">
+      <div className="relative w-full max-w-2xl bg-white sm:rounded-xl shadow-2xl overflow-hidden animate-slide-up max-h-[90vh] flex flex-col border border-gray-200">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
@@ -288,7 +288,7 @@ export default function EditHistory({ item, onClose, onUpdate, showToast }: Edit
         </div>
 
         {/* Action Bar */}
-        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex gap-4">
+        <div className="px-6 py-4 pb-24 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row gap-4">
           <button
             onClick={onClose}
             disabled={loading}
@@ -316,6 +316,19 @@ export default function EditHistory({ item, onClose, onUpdate, showToast }: Edit
           </button>
         </div>
       </div>
+
+      <style>{`
+        @keyframes slide-up {
+          from { transform: translateY(100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-slide-up { animation: slide-up 0.3s ease-out; }
+        .animate-fade-in { animation: fade-in 0.3s ease-out; }
+      `}</style>
     </div>
   );
 }
