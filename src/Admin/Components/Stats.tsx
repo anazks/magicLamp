@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FaClock, FaCheckCircle, FaTimesCircle, FaSpinner, FaChartBar, FaUsers, FaUserCog, FaCalendarAlt, FaHistory } from 'react-icons/fa';
+import { FaClock, FaCheckCircle, FaTimesCircle, FaSpinner, FaChartBar, FaUsers, FaCalendarAlt, FaHistory } from 'react-icons/fa';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend, AreaChart, Area 
@@ -301,7 +301,7 @@ export default function Stats() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-6">Popular Categories</h2>
           <div className="space-y-4">
-            {topCategories.map((cat, idx) => (
+            {topCategories.map((cat) => (
               <div key={cat.category} className="group">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-medium text-gray-700">{cat.category}</span>
