@@ -328,7 +328,7 @@ function SubcategoryModal({
                   </h3>
                   {sub.service_charge && (
                     <p className="text-emerald-600 font-medium mt-1 text-xs sm:text-sm">
-                      ₹{sub.service_charge}
+                      service Charge form ₹{sub.service_charge}
                     </p>
                   )}
                 </div>
@@ -909,7 +909,10 @@ export default function Service() {
         }
 
         const servicesData = await listServices();
-        const activeServices = (servicesData?.results || []).filter(
+        // Since listServices() now returns response.data?.results || response.data
+        const servicesList = Array.isArray(servicesData) ? servicesData : (servicesData?.results || []);
+        
+        const activeServices = servicesList.filter(
           (s: ServiceCategory) => s.is_active
         );
         setServices(activeServices);
@@ -1066,7 +1069,7 @@ export default function Service() {
                   </h3>
                   {category.service_charge && (
                     <p className="mt-1 text-xs sm:text-sm font-medium text-emerald-600">
-                      From ₹{category.service_charge}
+                      service Charge form ₹{category.service_charge}
                     </p>
                   )}
                   {category.subcategories?.length > 0 && (

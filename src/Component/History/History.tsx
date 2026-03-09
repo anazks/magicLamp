@@ -2,23 +2,24 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { serviceHistory } from "../../Api/Service";
 import Loader from "../Loader/Loader";
+import { baseURL } from "../../Static/Static";
 import {
   FaMapMarkerAlt,
   FaCalendarAlt,
   FaUser,
   FaPhone,
-  FaChevronRight,
-  FaExternalLinkAlt,
-  FaMapPin,
   FaCheckCircle,
   FaHourglassHalf,
   FaTimesCircle,
   FaHistory,
   FaLock,
   FaInfoCircle,
-  FaStickyNote, // Added for admin notes icon
-  FaCommentAlt, // Added for admin notes in details
+  FaStickyNote,
+  FaEdit,
+  FaTimes,
+  FaArrowLeft,
 } from "react-icons/fa";
+import EditHistory from "./EditHistory";
 
 interface ServiceHistoryItem {
   id: number;
@@ -34,15 +35,31 @@ interface ServiceHistoryItem {
   mobile_number: string;
   customer_name: string;
   category_icon?: string | null;
-  admin_notes?: string; // Added admin_notes field
+  admin_notes?: string;
+  media_files?: any[];
 }
+
+const getFullUrl = (url: string) => {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  const base = baseURL.endsWith("/") ? baseURL.slice(0, -1) : baseURL;
+  const path = url.startsWith("/") ? url : `/${url}`;
+  return `${base}${path}`;
+};
 
 export default function History() {
   const [history, setHistory] = useState<ServiceHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<ServiceHistoryItem | null>(null);
+  const [editingItem, setEditingItem] = useState<ServiceHistoryItem | null>(null);
   const [isGuest, setIsGuest] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const navigate = useNavigate();
 
@@ -55,134 +72,129 @@ export default function History() {
       return;
     }
 
-    const fetchHistory = async () => {
-      try {
-        setLoading(true);
-        const data = await serviceHistory();
-          console.log("Raw service history data:", data); // Debug log
-        const transformed = data.map((item: any) => ({
-          id: item.id,
-          request_id: item.request_id,
-          category_name: item.category_name,
-          subcategory_name: item.subcategory_name,
-          date: item.created_at,
-          status: item.status,
-          description: item.service_details?.description,
-          address: item.address,
-          latitude: item.latitude,
-          longitude: item.longitude,
-          mobile_number: item.mobile_number,
-          customer_name: item.customer_name,
-          category_icon: item.category_icon,
-          admin_notes: item.admin_notes, // Include admin_notes
-        }));
-
-        setHistory(transformed);
-      } catch (err: any) {
-        setError(err.message || "Failed to load history");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchHistory();
   }, []);
 
-  const getStatusBadge = (status: string) => {
-    const s = status.toLowerCase().trim();
+  const fetchHistory = async () => {
+    try {
+      setLoading(true);
+      const data = await serviceHistory();
+      const transformed = data.map((item: any) => ({
+        id: item.id,
+        request_id: item.request_id,
+        category_name: item.category_name,
+        subcategory_name: item.subcategory_name,
+        date: item.created_at,
+        status: item.status,
+        description: item.service_details?.description,
+        address: item.address,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        mobile_number: item.mobile_number,
+        customer_name: item.customer_name,
+        category_icon: item.category_icon,
+        admin_notes: item.admin_notes,
+        media_files: item.media_files,
+      }));
 
-    if (s === "completed")
+      setHistory(transformed);
+    } catch (err: any) {
+      setError(err.message || "Failed to load history");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdate = () => {
+    fetchHistory();
+  };
+
+  const getStatusStyle = (status: string) => {
+    const s = (status || "").toLowerCase().trim();
+    if (s === "completed") {
       return {
         label: "Completed",
-        color: "bg-emerald-100 text-emerald-800 border-emerald-200",
-        icon: <FaCheckCircle className="text-emerald-600" />,
+        bg: "bg-emerald-50",
+        text: "text-emerald-700",
+        border: "border-emerald-100",
+        icon: <FaCheckCircle className="text-emerald-500" />,
       };
-    if (s === "accepted")
+    }
+    if (s === "accepted" || s === "assigned" || s === "in progress") {
       return {
-        label: "Accepted",
-        color: "bg-blue-100 text-blue-800 border-blue-200",
-        icon: <FaCheckCircle className="text-blue-600" />,
+        label: status,
+        bg: "bg-blue-50",
+        text: "text-blue-700",
+        border: "border-blue-100",
+        icon: <FaHistory className="text-blue-500" />,
       };
-    if (s === "pending")
+    }
+    if (s === "pending") {
       return {
         label: "Pending",
-        color: "bg-amber-100 text-amber-800 border-amber-200",
-        icon: <FaHourglassHalf className="text-amber-600" />,
+        bg: "bg-amber-50",
+        text: "text-amber-700",
+        border: "border-amber-100",
+        icon: <FaHourglassHalf className="text-amber-500 animate-pulse" />,
       };
-    if (s === "cancelled" || s === "rejected")
-      return {
-        label: s === "cancelled" ? "Cancelled" : "Rejected",
-        color: "bg-rose-100 text-rose-800 border-rose-200",
-        icon: <FaTimesCircle className="text-rose-600" />,
-      };
-
+    }
     return {
-      label: status || "Unknown",
-      color: "bg-gray-100 text-gray-800 border-gray-200",
-      icon: <FaInfoCircle className="text-gray-500" />,
+      label: status || "Rejected",
+      bg: "bg-rose-50",
+      text: "text-rose-700",
+      border: "border-rose-100",
+      icon: <FaTimesCircle className="text-rose-500" />,
     };
   };
 
   if (isGuest) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center">
-          <div className="mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 text-blue-600 mb-6 shadow-md">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center space-y-8">
+          <div className="relative inline-block">
+            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
               <FaLock size={32} />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-3">Guest Mode</h1>
-            <p className="text-gray-600 mb-8">
-              Please login to view your service history and track your requests
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Guest Mode</h1>
+            <p className="text-gray-600 px-4">
+              Please log in to view your service history and track your requests.
             </p>
           </div>
-
-          <div className="space-y-4 mb-8">
-            <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-              <FaHistory className="text-blue-600 text-xl" />
-              <span className="text-gray-700 font-medium">Track all your bookings</span>
-            </div>
-            <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-              <FaCalendarAlt className="text-purple-600 text-xl" />
-              <span className="text-gray-700 font-medium">View past appointments</span>
-            </div>
-          </div>
-
-          <button
-            onClick={() => navigate("/login")}
-            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition mb-4"
-          >
-            Login Now
-          </button>
-
-          <p className="text-gray-600">
-            Don't have an account?{" "}
+          <div className="grid grid-cols-1 gap-4">
+            <button
+              onClick={() => navigate("/login")}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all"
+            >
+              Log in to Continue
+            </button>
             <button
               onClick={() => navigate("/register")}
-              className="text-blue-600 font-semibold hover:underline"
+              className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all"
             >
               Sign up
             </button>
-          </p>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (loading) {
-    return <Loader />;
-  }
+  if (loading) return <Loader />;
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="text-center max-w-sm">
-          <div className="text-6xl mb-6 opacity-70">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-3">Oops!</h2>
-          <p className="text-gray-600 mb-8">{error}</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="text-center bg-white p-8 rounded-xl shadow-sm border border-gray-200 max-w-sm w-full">
+          <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mx-auto mb-4">
+            <FaInfoCircle size={24} />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-md transition"
+            className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all"
           >
             Try Again
           </button>
@@ -192,163 +204,121 @@ export default function History() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-20 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto pt-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <FaHistory className="text-blue-600" />
-            Service History
-          </h1>
-          <p className="text-gray-600 mt-2">View and track all your past service requests</p>
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Header Section */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-4xl mx-auto px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate(-1)} 
+              className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
+            >
+              <FaArrowLeft size={14} />
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">History</h1>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+            <FaHistory size={16} />
+          </div>
         </div>
+      </div>
 
+      <div className="max-w-4xl mx-auto px-5 pt-8">
         {history.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-md p-10 text-center border border-gray-100">
-            <div className="text-7xl mb-6 opacity-40">📭</div>
-            <h2 className="text-2xl font-semibold text-gray-800 mb-3">No service requests yet</h2>
-            <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              When you book a service, it will appear here so you can track its status
-            </p>
+          <div className="py-20 text-center space-y-6">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mx-auto">
+              <FaHistory size={32} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">No Requests Found</h2>
+              <p className="text-gray-500 max-w-xs mx-auto">
+                Once you start booking services, they will appear here for you to track.
+              </p>
+            </div>
             <button
               onClick={() => navigate("/home")}
-              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition"
+              className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all"
             >
-              Book a Service Now
+              Explore Services
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             {history.map((item) => {
-              const badge = getStatusBadge(item.status);
+              const statusStyle = getStatusStyle(item.status);
+              const isPending = item.status.toLowerCase() === "pending";
 
               return (
                 <div
                   key={item.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-200"
+                  className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden"
                 >
-                  <div className="p-4 sm:p-5">
-                    {/* Top section */}
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-14 h-14 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0 border border-gray-200">
+                  <div className="p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center p-2 border border-gray-200">
                           {item.category_icon ? (
-                            <img
-                              src={item.category_icon}
-                              alt=""
-                              className="w-8 h-8 object-contain"
-                            />
+                            <img src={item.category_icon} alt="" className="w-full h-full object-contain" />
                           ) : (
-                            <span className="text-2xl font-bold text-gray-400">
-                              {item.category_name?.charAt(0) || "?"}
+                            <span className="text-lg font-bold text-gray-400">
+                              {item.category_name?.charAt(0)}
                             </span>
                           )}
                         </div>
-
                         <div>
-                          <h3 className="font-semibold text-lg text-gray-900">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">#{item.request_id}</p>
+                          <h3 className="text-lg font-bold text-gray-900 leading-tight">
                             {item.category_name}
                           </h3>
                           {item.subcategory_name && (
-                            <p className="text-sm text-gray-600 mt-0.5">
-                              {item.subcategory_name}
-                            </p>
+                            <p className="text-sm text-gray-500 font-medium">{item.subcategory_name}</p>
                           )}
-                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
-                            <FaCalendarAlt size={14} />
-                            <span>
-                              {new Date(item.date).toLocaleDateString("en-IN", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                                hour: "numeric",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
                         </div>
                       </div>
-
-                      {/* Status Badge */}
-                      <div
-                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border ${badge.color}`}
-                      >
-                        {badge.icon}
-                        {badge.label}
+                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border} text-xs font-semibold`}>
+                        {statusStyle.icon}
+                        {statusStyle.label}
                       </div>
                     </div>
 
-                    {/* Address */}
-                    <div className="flex items-start gap-3 mb-4 text-sm text-gray-700">
-                      <FaMapMarkerAlt className="text-blue-600 mt-1 flex-shrink-0 text-lg" />
-                      <p className="leading-relaxed line-clamp-2">{item.address}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <FaCalendarAlt className="text-gray-400" size={14} />
+                        <span className="font-medium">
+                          {new Date(item.date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <FaMapMarkerAlt className="text-gray-400" size={14} />
+                        <span className="truncate font-medium">{item.address}</span>
+                      </div>
                     </div>
 
-                    {/* Admin Notes Preview (if exists) */}
-                    {item.admin_notes && (
-                      <div className="mb-4">
-                        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                          <FaStickyNote className="text-amber-600 mt-0.5 flex-shrink-0" />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-amber-800">
-                                Admin Note
-                              </span>
-                              <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
-                                Staff
-                              </span>
-                            </div>
-                            <p className="text-sm text-amber-700 line-clamp-2">
-                              {item.admin_notes}
-                            </p>
-                          </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-xs font-bold">
+                          {item.customer_name.charAt(0)}
                         </div>
+                        <span className="text-sm font-medium text-gray-700">{item.customer_name}</span>
                       </div>
-                    )}
 
-                    {/* Customer Info */}
-                    <div className="grid grid-cols-2 sm:flex sm:gap-6 mb-5 text-sm text-gray-700">
                       <div className="flex items-center gap-2">
-                        <FaUser className="text-gray-500" />
-                        <span>{item.customer_name}</span>
+                        {isPending && (
+                          <button
+                            onClick={() => setEditingItem(item)}
+                            className="p-2.5 flex items-center justify-center bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-200"
+                            title="Edit Request"
+                          >
+                            <FaEdit size={14} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setSelectedItem(item)}
+                          className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2"
+                        >
+                          View Details
+                        </button>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <FaPhone className="text-gray-500" />
-                        <span>{item.mobile_number}</span>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <button
-                        onClick={() => setSelectedItem(item)}
-                        className="flex-1 py-3 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition flex items-center justify-center gap-2 shadow-sm"
-                      >
-                        View Full Details
-                        <FaChevronRight size={14} />
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          const lat = parseFloat(item.latitude);
-                          const lng = parseFloat(item.longitude);
-                          if (!isNaN(lat) && !isNaN(lng)) {
-                            window.open(
-                              `https://www.google.com/maps?q=${lat},${lng}`,
-                              "_blank"
-                            );
-                          }
-                        }}
-                        disabled={!item.latitude || !item.longitude}
-                        className={`py-3 px-6 rounded-xl font-medium flex items-center justify-center gap-2 flex-1 sm:flex-none sm:min-w-[130px] transition ${
-                          item.latitude && item.longitude
-                            ? "bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm"
-                            : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        }`}
-                      >
-                        <FaMapPin size={14} />
-                        View on Map
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -360,138 +330,198 @@ export default function History() {
 
       {/* Details Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl animate-fade-in-up">
-            {/* Header */}
-            <div className="p-5 border-b bg-gradient-to-r from-gray-50 to-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/60 animate-fade-in" 
+            onClick={() => setSelectedItem(null)} 
+          />
+          <div className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col border border-gray-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Service Details</h2>
-                <p className="text-sm text-gray-500 mt-0.5">#{selectedItem.request_id}</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-0.5">ORDER #{selectedItem.request_id}</p>
               </div>
               <button
                 onClick={() => setSelectedItem(null)}
-                className="text-gray-600 hover:text-gray-900 text-2xl p-2 hover:bg-gray-100 rounded-full transition"
+                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-all"
               >
-                ×
+                <FaTimes size={18} />
               </button>
             </div>
 
-            {/* Content */}
-            <div className="p-5 sm:p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Service</h3>
-                  <p className="font-medium">{selectedItem.category_name}</p>
-                  {selectedItem.subcategory_name && (
-                    <p className="text-sm text-gray-600 mt-1">{selectedItem.subcategory_name}</p>
-                  )}
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Status</h3>
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto space-y-6 pb-12">
+              {/* Status & Service Header */}
+              <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                <div className="flex items-center justify-between gap-4 mb-2">
+                  <h3 className="text-2xl font-bold text-gray-900 leading-none">{selectedItem.category_name}</h3>
                   {(() => {
-                    const badge = getStatusBadge(selectedItem.status);
+                    const s = getStatusStyle(selectedItem.status);
                     return (
-                      <div
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${badge.color}`}
-                      >
-                        {badge.icon}
-                        {badge.label}
+                      <div className={`px-4 py-1 rounded-full border ${s.bg} ${s.text} ${s.border} text-xs font-bold uppercase tracking-wider`}>
+                        {s.label}
                       </div>
                     );
                   })()}
                 </div>
+                {selectedItem.subcategory_name && (
+                  <p className="text-sm font-medium text-gray-500">{selectedItem.subcategory_name}</p>
+                )}
               </div>
 
-              {/* Admin Notes in Detail View */}
-              {selectedItem.admin_notes && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2 flex items-center gap-2">
-                    <FaCommentAlt className="text-amber-600" />
-                    Admin Notes
-                  </h3>
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                          <FaStickyNote className="text-amber-600" size={14} />
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-amber-800">
-                            Service Team Notes
-                          </span>
-                          <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full">
-                            STAFF
-                          </span>
-                        </div>
-                        <p className="text-sm text-amber-900 whitespace-pre-wrap leading-relaxed">
-                          {selectedItem.admin_notes}
-                        </p>
-                      </div>
+              {/* Information Grid */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Customer</p>
+                    <div className="flex items-center gap-3">
+                      <FaUser className="text-blue-500" />
+                      <p className="text-sm font-bold text-gray-900 leading-none">{selectedItem.customer_name}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Contact</p>
+                    <div className="flex items-center gap-3">
+                      <FaPhone className="text-emerald-500" />
+                      <p className="text-sm font-bold text-gray-900 leading-none">{selectedItem.mobile_number}</p>
                     </div>
                   </div>
                 </div>
-              )}
 
-              {selectedItem.description && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Description</h3>
-                  <p className="text-gray-700 whitespace-pre-wrap">{selectedItem.description}</p>
+                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Service Location</p>
+                  <div className="flex items-start gap-3">
+                    <FaMapMarkerAlt className="text-rose-500 mt-1" />
+                    <p className="text-sm font-medium text-gray-700 leading-relaxed">{selectedItem.address}</p>
+                  </div>
+                </div>
+
+                {selectedItem.description && (
+                  <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Description</p>
+                    <p className="text-sm text-gray-600 leading-relaxed italic border-l-4 border-blue-500 pl-3">
+                      "{selectedItem.description}"
+                    </p>
+                  </div>
+                )}
+              </div>
+
+               {/* Admin Notes */}
+               {selectedItem.admin_notes && (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <FaStickyNote className="text-amber-600" size={14} />
+                    <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">Office Notes</span>
+                  </div>
+                  <p className="text-sm leading-relaxed text-amber-800 font-medium bg-white/50 p-3 rounded-lg">
+                    {selectedItem.admin_notes}
+                  </p>
                 </div>
               )}
 
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Customer</h3>
-                <div className="flex flex-col gap-1">
-                  <p className="font-medium">{selectedItem.customer_name}</p>
-                  <p className="text-gray-600">{selectedItem.mobile_number}</p>
+              {/* Media Section */}
+              {selectedItem.media_files && selectedItem.media_files.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                     <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">Attachments</p>
+                     <span className="text-[10px] bg-gray-100 px-2 py-1 rounded-full text-gray-600 font-bold uppercase">{selectedItem.media_files.length} ITEMS</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {selectedItem.media_files.map((media: any) => (
+                      <div key={media.id} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
+                        {media.file_type === 'image' ? (
+                          <img 
+                            src={getFullUrl(media.file)} 
+                            alt="" 
+                            className="w-full h-full object-cover cursor-pointer transition-transform duration-300 hover:scale-105"
+                            onClick={() => window.open(getFullUrl(media.file), '_blank')}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50">
+                            <FaHistory className="text-blue-400 mb-1" />
+                            <a 
+                              href={getFullUrl(media.file)} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-[10px] font-bold text-blue-600 hover:underline"
+                            >
+                              Audio
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Address</h3>
-                <p className="text-gray-700">{selectedItem.address}</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Requested On</h3>
-                <p className="text-gray-700">
-                  {new Date(selectedItem.date).toLocaleString("en-IN", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
-                </p>
-              </div>
+              )}
             </div>
 
-            {/* Footer */}
-            <div className="p-5 border-t bg-gray-50 flex gap-4">
-              <button
+            {/* Modal Footer */}
+            <div className="px-6 py-5 border-t border-gray-200 bg-white grid grid-cols-2 gap-3">
+               <button
                 onClick={() => {
                   const lat = parseFloat(selectedItem.latitude);
                   const lng = parseFloat(selectedItem.longitude);
                   if (!isNaN(lat) && !isNaN(lng)) {
-                    window.open(
-                      `https://www.google.com/maps?q=${lat},${lng}`,
-                      "_blank"
-                    );
+                    window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank");
                   }
                 }}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition flex items-center justify-center gap-2 shadow-sm"
+                className="py-3 bg-gray-100 text-gray-700 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-gray-200 transition-all border border-gray-200"
               >
-                <FaExternalLinkAlt size={14} />
-                Open in Maps
+                Track on Map
               </button>
-
-              <button
-                onClick={() => setSelectedItem(null)}
-                className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition"
-              >
-                Close
-              </button>
+              {selectedItem.status.toLowerCase() === "pending" ? (
+                <button
+                  onClick={() => {
+                    setEditingItem(selectedItem);
+                    setSelectedItem(null);
+                  }}
+                  className="py-3 bg-blue-600 text-white rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-95"
+                >
+                  Edit Request
+                </button>
+              ) : (
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="py-3 bg-gray-900 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all active:scale-95"
+                >
+                  Close
+                </button>
+              )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit History Modal Overlay */}
+      {editingItem && (
+        <EditHistory
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onUpdate={handleUpdate}
+          showToast={showToast}
+        />
+      )}
+
+      {/* Standard Toast */}
+      {toast && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-slide-down px-6 w-full max-w-sm">
+          <div className={`p-4 rounded-xl shadow-lg border-2 bg-white flex items-center gap-4 ${
+            toast.type === "success" ? "border-emerald-100" : "border-rose-100"
+          }`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+              toast.type === "success" ? "bg-emerald-50 text-emerald-500" : "bg-rose-50 text-rose-500"
+            }`}>
+              {toast.type === "success" ? <FaCheckCircle size={20} /> : <FaInfoCircle size={20} />}
+            </div>
+            <div className="flex-1 min-w-0">
+               <p className="text-sm font-bold text-gray-900 truncate">{toast.message}</p>
+            </div>
+            <button onClick={() => setToast(null)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 transition-all">
+               <FaTimes size={14} />
+            </button>
           </div>
         </div>
       )}

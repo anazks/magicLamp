@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { getAllRequestedServices, updateRequestStatus } from "../../Api/Service";
+import { getAllRequestedServices, updateRequestStatus, getAllServiceCategory } from "../../Api/Service";
 import axios from "axios";
 import {
   FaSearch,
@@ -16,7 +16,14 @@ import {
   FaVideo,
   FaFile,
   FaExternalLinkAlt,
-  FaExpand,
+  FaCalendarAlt, // Added
+  FaTags, // Added
+  FaSort, // Added
+  FaSortUp, // Added
+  FaSortDown, // Added
+  FaPhone, // Added for modal
+  FaInfoCircle, // Added for modal
+  FaMapPin, // Added for modal
 } from "react-icons/fa";
 import Loader from "../../Component/Loader/Loader";
 
@@ -55,7 +62,13 @@ interface ServiceRequest {
   media_files?: MediaFile[]; // Added media files
 }
 
+interface Category {
+  id: number;
+  name: string;
+}
+
 interface PaginatedResponse {
+  total: number; // For some reason count is total in some responses? Let's check
   count: number;
   next: string | null;
   previous: string | null;
@@ -87,6 +100,18 @@ export default function History() {
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<RequestStatus | "all">("all");
+  const [categoryIdFilter, setCategoryIdFilter] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  
+  // Sorting
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
+    key: 'created_at',
+    direction: 'desc'
+  });
+
+  // Categories list
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Stats
   const [stats, setStats] = useState({
@@ -108,15 +133,46 @@ export default function History() {
   const [pendingStatusChange, setPendingStatusChange] = useState<RequestStatus | null>(null);
 
   useEffect(() => {
-    fetchRequests();
+    fetchInitialData();
   }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      // Fetch categories
+      const catRes = await getAllServiceCategory();
+      const catData = catRes.data?.results || catRes.data || [];
+      setCategories(Array.isArray(catData) ? catData : []);
+      
+      // Fetch initial requests
+      fetchRequests();
+    } catch (err) {
+      console.error("Failed to load initial data:", err);
+    }
+  };
+
+  useEffect(() => {
+    // Only refetch if it's not the initial load (which is handled by fetchInitialData)
+    if (categories.length >= 0) {
+      fetchRequests();
+    }
+  }, [statusFilter, categoryIdFilter, startDate, endDate, sortConfig]);
 
   const fetchRequests = async (url?: string) => {
     setLoading(true);
     try {
-      const response = url
-        ? await getAllRequestedServices(url)
-        : await getAllRequestedServices(undefined); // Fixed: added undefined parameter
+      const ordering = sortConfig 
+        ? `${sortConfig.direction === 'desc' ? '-' : ''}${sortConfig.key}`
+        : undefined;
+
+      const filters = {
+        status: statusFilter,
+        category_id: categoryIdFilter,
+        start_date: startDate,
+        end_date: endDate,
+        ordering
+      };
+
+      const response = await getAllRequestedServices(url, filters);
       const data: PaginatedResponse = response.data;
 
       setRequests(data.results || []);
@@ -166,6 +222,49 @@ export default function History() {
 
   const goToNext = () => {
     if (nextUrl) fetchRequests(nextUrl);
+  };
+
+  const goToPage = (pageNumber: number) => {
+    if (pageNumber === currentPage) return;
+    
+    // Construct the URL with the desired page number
+    // We can use the base requests endpoint and append the current filters and the page number
+    const filters = {
+      status: statusFilter,
+      category_id: categoryIdFilter,
+      start_date: startDate,
+      end_date: endDate
+    };
+
+    const params = new URLSearchParams();
+    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+    if (filters.category_id) params.append('category_id', filters.category_id);
+    if (filters.start_date) params.append('start_date', filters.start_date);
+    if (filters.end_date) params.append('end_date', filters.end_date);
+    params.append('page', pageNumber.toString());
+    
+    const url = `services/admin/requests/?${params.toString()}`;
+    fetchRequests(url);
+  };
+
+  // Helper to generate page numbers to display
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+      
+      if (endPage === totalPages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+      }
+      
+      for (let i = startPage; i <= endPage; i++) pages.push(i);
+    }
+    return pages;
   };
 
   // Reverse geocode
@@ -317,13 +416,25 @@ export default function History() {
     }
   };
 
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key: string) => {
+    if (!sortConfig || sortConfig.key !== key) return <FaSort className="text-gray-300 ml-1" />;
+    return sortConfig.direction === 'asc' 
+      ? <FaSortUp className="text-blue-600 ml-1" /> 
+      : <FaSortDown className="text-blue-600 ml-1" />;
+  };
+
   const filteredRequests = useMemo(() => {
     let result = [...requests];
 
-    if (statusFilter !== "all") {
-      result = result.filter((r) => r.status === statusFilter);
-    }
-
+    // Client-side search (secondary filter on current page results)
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
       result = result.filter((r) =>
@@ -338,12 +449,9 @@ export default function History() {
       );
     }
 
-    result.sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-
+    // Backend handles sorting now, but we keep this as a fallback/secondary
     return result;
-  }, [requests, searchTerm, statusFilter]);
+  }, [requests, searchTerm]);
 
   const getStatusColor = (status: RequestStatus) => {
     const colors: Record<RequestStatus, string> = {
@@ -372,7 +480,7 @@ export default function History() {
   if (loading) return <Loader />;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50/50 p-6 animate-in fade-in duration-700">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Service Requests</h1>
 
@@ -393,33 +501,105 @@ export default function History() {
           ))}
         </div>
 
-        {/* Search + Filter */}
-        <div className="bg-white p-4 rounded-lg shadow-sm mb-6 border border-gray-200">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by ID, name, phone, service, address, note..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+        {/* Search + Filter Grid */}
+        <div className="bg-white p-6 rounded-xl shadow-md mb-8 border border-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
+            {/* Search */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Search</label>
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="ID, name, phone..."
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+              </div>
             </div>
-            <div className="relative">
-              <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as RequestStatus | "all")}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">All Status</option>
-                <option value="Pending">Pending</option>
-                <option value="Assigned">Assigned</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
+
+            {/* Status Filter */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Status</label>
+              <div className="relative">
+                <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as RequestStatus | "all")}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Assigned">Assigned</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Category Filter */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Category</label>
+              <div className="relative">
+                <FaTags className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <select
+                  value={categoryIdFilter}
+                  onChange={(e) => setCategoryIdFilter(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Start Date */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">From Date</label>
+              <div className="relative">
+                <FaCalendarAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* End Date & Reset */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">To Date</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <FaCalendarAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
+                {(statusFilter !== 'all' || categoryIdFilter || startDate || endDate || searchTerm) && (
+                  <button
+                    onClick={() => {
+                      setStatusFilter('all');
+                      setCategoryIdFilter('');
+                      setStartDate('');
+                      setEndDate('');
+                      setSearchTerm('');
+                    }}
+                    className="p-2.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200 transition-colors"
+                    title="Clear all filters"
+                  >
+                    <FaTimes />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -452,26 +632,41 @@ export default function History() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ID
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('request_id')}
+                      >
+                        <div className="flex items-center">ID {getSortIcon('request_id')}</div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('customer_name')}
+                      >
+                        <div className="flex items-center">Customer {getSortIcon('customer_name')}</div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('category_name')}
+                      >
+                        <div className="flex items-center">Service {getSortIcon('category_name')}</div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('status')}
+                      >
+                        <div className="flex items-center">Status {getSortIcon('status')}</div>
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Customer
+                        Media
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Service
+                        Admin Note
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Media Files
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Admin Notes
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('created_at')}
+                      >
+                        <div className="flex items-center">Date {getSortIcon('created_at')}</div>
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -612,24 +807,50 @@ export default function History() {
                   Showing {filteredRequests.length} of{" "}
                   {totalCount} requests
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1 items-center">
                   <button
                     onClick={goToPrevious}
                     disabled={!prevUrl}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="p-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title="Previous Page"
                   >
                     <FaChevronLeft />
-                    Previous
                   </button>
-                  <div className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md">
-                    Page {currentPage} of {totalPages || 1}
+
+                  <div className="flex gap-1">
+                    {getPageNumbers().map(page => (
+                      <button
+                        key={page}
+                        onClick={() => goToPage(page)}
+                        className={`min-w-[40px] h-10 px-3 text-sm font-medium rounded-lg border transition-all ${
+                          currentPage === page
+                            ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100"
+                            : "bg-white border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
                   </div>
+
+                  {totalPages > 5 && getPageNumbers()[getPageNumbers().length - 1] < totalPages && (
+                    <>
+                      <span className="px-2 text-gray-400">...</span>
+                      <button
+                        onClick={() => goToPage(totalPages)}
+                        className="min-w-[40px] h-10 px-3 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white transition-all"
+                      >
+                        {totalPages}
+                      </button>
+                    </>
+                  )}
+
                   <button
                     onClick={goToNext}
                     disabled={!nextUrl}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="p-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title="Next Page"
                   >
-                    Next
                     <FaChevronRight />
                   </button>
                 </div>
@@ -638,216 +859,194 @@ export default function History() {
           )}
         </div>
 
-        {/* Detail Modal */}
+        {/* Space-Saving Detail Modal */}
         {selectedRequest && (
-          <div className="fixed inset-0 bg-white/95 backdrop-blur-sm flex items-center justify-center p-4 z-40">
-            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-300">
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-                <h2 className="text-2xl font-bold text-gray-900">Service Request Details</h2>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-2 z-[60]">
+            <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col border border-gray-200 animate-in fade-in zoom-in duration-200">
+              {/* Compact Header */}
+              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded bg-gray-50 flex items-center justify-center border border-gray-100">
+                    <FaInfoCircle className="text-gray-400 text-base" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-gray-900 leading-tight">Request #{selectedRequest.request_id}</h2>
+                    <div className="flex items-center gap-2 mt-0.5">
+                       <span className={`w-1.5 h-1.5 rounded-full ${selectedRequest.status === 'Completed' ? 'bg-green-500' : 'bg-blue-500'}`}></span>
+                       <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">{selectedRequest.status}</span>
+                    </div>
+                  </div>
+                </div>
                 <button
                   onClick={() => {
                     setSelectedRequest(null);
                     setSelectedMedia(null);
                   }}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                  className="p-1.5 rounded-full text-gray-400 hover:bg-gray-100 transition-all"
                 >
-                  ×
+                  <FaTimes size={14} />
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Request ID</h3>
-                  <p className="text-lg font-semibold text-gray-900">{selectedRequest.request_id}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Customer</h3>
-                  <p className="text-lg text-gray-900">{selectedRequest.customer_name}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Phone</h3>
-                  <p className="text-lg text-gray-900">{selectedRequest.mobile_number}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Service</h3>
-                  <p className="text-lg text-gray-900">
-                    {selectedRequest.category_name}{" "}
-                    {selectedRequest.subcategory_name && `→ ${selectedRequest.subcategory_name}`}
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Stored Address</h3>
-                  <p className="text-gray-900">{selectedRequest.address}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-                    <FaMapMarkerAlt className="text-red-500" />
-                    Approximate Location
-                  </h3>
-                  {reverseLoading ? (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <FaSpinner className="animate-spin" />
-                      Loading location...
+              {/* Compact Modal Body */}
+              <div className="overflow-y-auto p-5 bg-white">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Left Section (8 cols) */}
+                  <div className="lg:col-span-8 space-y-5">
+                    {/* Inline Info Row */}
+                    <div className="grid grid-cols-2 gap-4 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer</span>
+                        <p className="text-sm font-bold text-gray-900">{selectedRequest.customer_name}</p>
+                        <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                          <FaPhone className="text-gray-300 text-[9px]" />
+                          {selectedRequest.mobile_number}
+                        </p>
+                      </div>
+                      <div className="flex flex-col border-l border-gray-200 pl-4">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Service</span>
+                        <p className="text-sm font-bold text-gray-900">{selectedRequest.category_name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                          {selectedRequest.subcategory_name || "Standard Request"}
+                        </p>
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-gray-900">{reverseAddress}</p>
-                  )}
-                  {selectedRequest.latitude && selectedRequest.longitude && (
-                    <button
-                      onClick={() => {
-                        const mapUrl = `https://www.google.com/maps?q=${selectedRequest.latitude},${selectedRequest.longitude}`;
-                        window.open(mapUrl, "_blank", "noopener,noreferrer");
-                      }}
-                      className="mt-2 px-4 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 flex items-center gap-2"
-                    >
-                      <FaMapMarkerAlt />
-                      Get Directions
-                    </button>
-                  )}
-                </div>
 
-                {/* Media Files Section */}
-                {selectedRequest.media_files && selectedRequest.media_files.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
-                      <FaImage className="text-blue-500" />
-                      Media Files ({selectedRequest.media_files.length})
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {selectedRequest.media_files.map((media) => (
-                        <div
-                          key={media.id}
-                          className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
-                        >
-                          <div 
-                            className="aspect-square bg-gray-100 relative cursor-pointer group"
-                            onClick={() => setSelectedMedia(media)}
-                          >
-                            {media.file_type === 'image' ? (
-                              <>
-                                <img
-                                  src={getMediaUrl(media.file)}
-                                  alt={`Media ${media.id}`}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    const target = e.currentTarget;
-                                    target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f3f4f6"/><text x="50" y="50" font-family="Arial" font-size="10" fill="%236b7280" text-anchor="middle" dy=".3em">Image</text></svg>';
-                                  }}
-                                />
-                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity flex items-center justify-center">
-                                  <FaExpand className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </div>
-                              </>
-                            ) : (
-                              <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                                <div className="text-3xl mb-2">
-                                  {getFileIcon(media.file_type)}
-                                </div>
-                                <span className="text-xs text-gray-600 text-center">
-                                  {getFileTypeLabel(media.file_type)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="p-2 bg-white border-t border-gray-100">
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-gray-500 truncate">
-                                {new Date(media.created_at).toLocaleDateString()}
-                              </span>
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    window.open(getMediaUrl(media.file), '_blank');
-                                  }}
-                                  className="p-1 text-gray-500 hover:text-blue-600"
-                                  title="View"
-                                >
-                                  <FaExternalLinkAlt size={12} />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const link = document.createElement('a');
-                                    link.href = getMediaUrl(media.file);
-                                    link.download = media.file.split('/').pop() || `file-${media.id}`;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                  }}
-                                  className="p-1 text-gray-500 hover:text-green-600"
-                                  title="Download"
-                                >
-                                  <FaDownload size={12} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
+                    {/* Detailed Info */}
+                    <div className="space-y-4">
+                      <div className="bg-white">
+                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Description</h3>
+                        <div className="text-xs text-gray-700 leading-relaxed bg-gray-50/30 p-3 rounded border border-gray-100 min-h-[60px]">
+                          {selectedRequest.service_details?.description || "No specific details provided."}
                         </div>
-                      ))}
+                      </div>
+
+                      {selectedRequest.admin_notes && (
+                        <div className="bg-amber-50/30 p-3 rounded border border-amber-100/50">
+                          <h3 className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Admin Remark</h3>
+                          <p className="text-xs text-amber-900 italic font-medium">"{selectedRequest.admin_notes}"</p>
+                        </div>
+                      )}
+
+                      {/* Dense Media Gallery */}
+                      <div>
+                        <div className="flex justify-between items-center mb-3">
+                          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Attachments ({selectedRequest.media_files?.length || 0})</h3>
+                        </div>
+                        {selectedRequest.media_files && selectedRequest.media_files.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {selectedRequest.media_files.map((media) => (
+                              <div
+                                key={media.id}
+                                className="group relative w-16 h-16 rounded border border-gray-200 cursor-pointer overflow-hidden bg-gray-50 hover:border-blue-400 transition-all flex-shrink-0"
+                                onClick={() => setSelectedMedia(media)}
+                              >
+                                {media.file_type === 'image' ? (
+                                  <img
+                                    src={getMediaUrl(media.file)}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/150?text=Error'; }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center p-1">
+                                    <div className="text-gray-400 text-sm">
+                                      {getFileIcon(media.file_type)}
+                                    </div>
+                                    <span className="text-[8px] text-gray-400 font-bold uppercase mt-1">
+                                      {media.file_type}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-4 bg-gray-50/50 rounded border border-dashed border-gray-200">
+                             <p className="text-xs text-gray-400 italic">No attachments</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                )}
 
-                {selectedRequest.service_details?.description && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-1">Description</h3>
-                    <p className="text-gray-900 whitespace-pre-wrap">
-                      {selectedRequest.service_details.description}
-                    </p>
-                  </div>
-                )}
+                  {/* Right Sidebar Section (4 cols) */}
+                  <div className="lg:col-span-4 space-y-6 lg:border-l lg:border-gray-100 lg:pl-6 text-[11px]">
+                    {/* Compact Tracking */}
+                    <div>
+                      <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Timeline</h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                          <p className="text-gray-500">Created: <span className="font-bold text-gray-900 ml-1">{new Date(selectedRequest.created_at).toLocaleDateString()}</span></p>
+                        </div>
+                        {selectedRequest.updated_at && (
+                          <div className="flex items-center gap-3">
+                            <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+                            <p className="text-gray-500">Updated: <span className="font-bold text-gray-900 ml-1">{new Date(selectedRequest.updated_at).toLocaleDateString()}</span></p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                {selectedRequest.admin_notes && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-                      <FaStickyNote className="text-yellow-500" />
-                      Admin Notes
-                    </h3>
-                    <p className="text-gray-900 bg-yellow-50 p-3 rounded-lg border border-yellow-200 whitespace-pre-wrap">
-                      {selectedRequest.admin_notes}
-                    </p>
-                  </div>
-                )}
+                    {/* Compact Location */}
+                    <div>
+                      <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Location</h3>
+                      <div className="space-y-3">
+                        <div className="bg-gray-50 p-3 rounded border border-gray-100">
+                           <p className="text-gray-700 leading-tight font-medium text-xs truncate" title={selectedRequest.address}>
+                              {selectedRequest.address}
+                           </p>
+                        </div>
+                        
+                        {(reverseLoading || reverseAddress) && (
+                           <div className="bg-blue-50/30 p-2.5 rounded border border-blue-100/50 flex items-start gap-2">
+                              <FaMapPin className="text-blue-400 mt-0.5" />
+                              <div className="flex-1">
+                                 {reverseLoading ? (
+                                    <span className="text-blue-400 animate-pulse font-bold uppercase text-[9px]">Fetching...</span>
+                                 ) : (
+                                    <p className="text-blue-900 leading-tight font-medium text-[11px] line-clamp-2">
+                                       {reverseAddress}
+                                    </p>
+                                 )}
+                              </div>
+                           </div>
+                        )}
 
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Status</h3>
-                  <span
-                    className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${getStatusColor(
-                      selectedRequest.status
-                    )}`}
-                  >
-                    {selectedRequest.status}
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Created</h3>
-                  <p className="text-gray-900">{new Date(selectedRequest.created_at).toLocaleString()}</p>
-                </div>
-
-                {availableActions(selectedRequest.status).length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-3">Update Status</h3>
-                    <div className="flex flex-wrap gap-3">
-                      {availableActions(selectedRequest.status).map((action) => (
                         <button
-                          key={action}
-                          onClick={() => requestStatusChange(action)}
-                          disabled={updatingId === selectedRequest.id}
-                          className={`px-5 py-2 text-white font-medium rounded-md ${getActionButtonColor(action)} disabled:opacity-50`}
+                          onClick={() => {
+                            const mapUrl = `https://www.google.com/maps?q=${selectedRequest.latitude},${selectedRequest.longitude}`;
+                            window.open(mapUrl, "_blank", "noopener,noreferrer");
+                          }}
+                          className="w-full py-2 bg-gray-900 text-white rounded text-[10px] font-bold uppercase tracking-wider hover:bg-black transition-all flex items-center justify-center gap-2"
                         >
-                          Mark as {action}
+                          <FaMapMarkerAlt className="text-red-400" />
+                          Google Maps
                         </button>
-                      ))}
+                      </div>
                     </div>
+
+                    {/* Compact Actions */}
+                    {availableActions(selectedRequest.status).length > 0 && (
+                      <div className="pt-4 border-t border-gray-100">
+                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Quick Update</h3>
+                        <div className="grid grid-cols-2 gap-2">
+                          {availableActions(selectedRequest.status).map((action) => (
+                            <button
+                              key={action}
+                              onClick={() => requestStatusChange(action)}
+                              disabled={updatingId === selectedRequest.id}
+                              className={`py-2 px-2 rounded text-white font-bold text-[9px] uppercase tracking-wide ${getActionButtonColor(action)} transition-transform active:scale-95`}
+                            >
+                              {action}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -855,8 +1054,8 @@ export default function History() {
 
         {/* Media Preview Modal */}
         {selectedMedia && (
-          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-            <div className="relative max-w-4xl w-full max-h-[90vh]">
+          <div className="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[70] animate-in fade-in duration-200">
+            <div className="relative max-w-4xl w-full max-h-[90vh] animate-in zoom-in duration-300">
               <button
                 onClick={() => setSelectedMedia(null)}
                 className="absolute top-4 right-4 text-white hover:text-gray-300 text-3xl z-10 bg-black/50 rounded-full w-10 h-10 flex items-center justify-center"
@@ -944,8 +1143,8 @@ export default function History() {
 
         {/* Admin Note Confirmation Modal */}
         {showNoteModal && pendingStatusChange && (
-          <div className="fixed inset-0 bg-white/95 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full border border-gray-300">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-100 overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-t-lg flex items-center justify-between">
                 <h3 className="text-lg font-bold">
                   Change status to {pendingStatusChange}?

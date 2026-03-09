@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ServiceCategory } from '../../Api/Service'; // Adjust path
+import { ServiceCategory } from '../../Api/Service';
+import { FaPlus, FaTimes, FaImage, FaSortAmountDown, FaInfoCircle, FaCheckCircle } from 'react-icons/fa';
 
 interface AddCategoryProps {
   onClose?: () => void;
@@ -12,7 +13,7 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
     description: '',
     service_charge: '',
     is_active: true,
-    order: '0',           // ← new field (string for input, converted later)
+    order: '0',
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -33,7 +34,6 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
         [name]: (e.target as HTMLInputElement).checked,
       }));
     } else if (name === 'order') {
-      // Allow only non-negative integers
       if (value === '' || /^\d+$/.test(value)) {
         setFormData((prev) => ({ ...prev, [name]: value }));
       }
@@ -85,22 +85,16 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
     if (formData.service_charge) {
       const charge = Number(formData.service_charge);
       if (isNaN(charge) || charge < 0) {
-        newErrors.service_charge = 'Please enter a valid non-negative amount';
+        newErrors.service_charge = 'Please enter a valid amount';
       }
     }
 
-    // Validate order field
     if (formData.order !== '') {
       const orderNum = Number(formData.order);
       if (!Number.isInteger(orderNum) || orderNum < 0) {
-        newErrors.order = 'Display order must be a non-negative whole number';
+        newErrors.order = 'Must be a non-negative number';
       }
     }
-
-    // Optional: uncomment if image should be required
-    // if (!imageFile) {
-    //   newErrors.image = 'Category image is required';
-    // }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -125,9 +119,8 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
       }
       submitData.append('is_active', formData.is_active.toString());
 
-      // ── New field ───────────────────────────────────────
       if (formData.order !== '') {
-        submitData.append('order', formData.order);   // or 'display_order', 'position', etc.
+        submitData.append('order', formData.order);
       }
 
       if (imageFile) {
@@ -135,38 +128,23 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
       }
 
       const response = await ServiceCategory(submitData);
-
       const createdCategory = response.data || response;
 
-      alert('Category added successfully!');
       onSuccess?.(createdCategory);
       onClose?.();
 
     } catch (error: any) {
-      console.error('Full error object:', error);
-
+      console.error('Error adding category:', error);
       let message = 'Failed to add category. Please try again.';
 
       if (error.response) {
-        if (error.response.status === 403) {
-          message = 'Permission denied (403). You may need admin access.';
-        } else if (error.response.status === 401) {
-          message = 'Unauthorized (401). Please log in.';
-        }
-
         message =
           error.response.data?.message ||
           error.response.data?.detail ||
           error.response.data?.non_field_errors?.[0] ||
-          error.response.data?.order?.[0] ||
           error.response.data?.name?.[0] ||
-          error.response.data?.image?.[0] ||
-          JSON.stringify(error.response.data) ||
           message;
-      } else if (error.request) {
-        message = 'No response from server. Check connection.';
       }
-
       setApiError(message);
     } finally {
       setSubmitting(false);
@@ -174,196 +152,205 @@ export default function AddCategory({ onClose, onSuccess }: AddCategoryProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="bg-white">
       {apiError && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 text-red-700 text-sm">
-          {apiError}
+        <div className="mb-6 flex items-center gap-3 bg-red-50 border border-red-100 p-4 rounded-xl text-red-700 text-sm animate-shake">
+          <FaInfoCircle className="flex-shrink-0" />
+          <p>{apiError}</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            maxLength={100}
-            placeholder="e.g. Transportation, Food Delivery, Home Cleaning"
-            disabled={submitting}
-            className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              errors.name ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-          <p className="mt-1 text-xs text-gray-500">
-            {formData.name.length}/100 characters
-          </p>
-        </div>
-
-        {/* Display Order - NEW FIELD */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Display Order
-          </label>
-          <input
-            type="number"
-            name="order"
-            value={formData.order}
-            onChange={handleChange}
-            min="0"
-            step="1"
-            placeholder="0 (higher priority = lower number)"
-            disabled={submitting}
-            className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              errors.order ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.order && (
-            <p className="mt-1 text-sm text-red-600">{errors.order}</p>
-          )}
-          <p className="mt-1 text-xs text-gray-500">
-            Smaller number = appears earlier (0 = highest priority)
-          </p>
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows={3}
-            placeholder="Brief description of this category (optional)"
-            disabled={submitting}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        {/* Service Charge */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Default Service Charge (₹)
-          </label>
-          <input
-            type="number"
-            name="service_charge"
-            value={formData.service_charge}
-            onChange={handleChange}
-            step="0.01"
-            min="0"
-            placeholder="0.00 (optional)"
-            disabled={submitting}
-            className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              errors.service_charge ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.service_charge && (
-            <p className="mt-1 text-sm text-red-600">{errors.service_charge}</p>
-          )}
-        </div>
-
-        {/* Image Upload */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category Image
-          </label>
-          <div className="flex items-start gap-6">
-            <label className="cursor-pointer">
-              <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition relative overflow-hidden">
-                {previewUrl ? (
-                  <>
-                    <img
-                      src={previewUrl}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeImage();
-                      }}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow"
-                    >
-                      ×
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-3xl text-gray-400">+</span>
-                    <span className="text-xs text-gray-500 mt-2 text-center px-4">
-                      Click to upload
-                    </span>
-                  </>
-                )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left Column: Essential Info */}
+          <div className="space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Category Name <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  maxLength={100}
+                  placeholder="e.g. Transportation"
                   disabled={submitting}
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:ring-4 focus:ring-blue-100 focus:bg-white focus:border-blue-500 outline-none transition-all ${
+                    errors.name ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                />
+                {formData.name && !errors.name && (
+                  <FaCheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500 text-sm" />
+                )}
+              </div>
+              {errors.name && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.name}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  Display Order
+                </label>
+                <div className="relative">
+                  <FaSortAmountDown className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                  <input
+                    type="number"
+                    name="order"
+                    value={formData.order}
+                    onChange={handleChange}
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    disabled={submitting}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:bg-white focus:border-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <p className="mt-1 text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Lower = Appears first</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  Charge (₹)
+                </label>
+                <input
+                  type="number"
+                  name="service_charge"
+                  value={formData.service_charge}
+                  onChange={handleChange}
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  disabled={submitting}
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:ring-4 focus:ring-blue-100 focus:bg-white focus:border-blue-500 outline-none transition-all ${
+                    errors.service_charge ? 'border-red-500' : 'border-gray-200'
+                  }`}
                 />
               </div>
-            </label>
+            </div>
 
-            <div className="text-sm text-gray-500">
-              <p>Recommended: square image (512×512 or larger)</p>
-              <p>PNG, JPG, max 5MB</p>
-              {errors.image && <p className="text-red-600 mt-1">{errors.image}</p>}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Description
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows={4}
+                placeholder="Describe this category..."
+                disabled={submitting}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:bg-white focus:border-blue-500 outline-none transition-all resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Right Column: Visualization & Status */}
+          <div className="space-y-6">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Category Image
+              </label>
+              <div className="relative group">
+                <label className={`block w-full h-56 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all duration-300 ${
+                  previewUrl 
+                    ? 'border-transparent bg-gray-100 overflow-hidden' 
+                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-blue-300'
+                } ${submitting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}>
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-center p-6">
+                      <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <FaImage className="text-gray-400 text-2xl" />
+                      </div>
+                      <p className="text-sm font-semibold text-gray-700">Drop your image here</p>
+                      <p className="text-xs text-gray-400 mt-1">or click to browse files</p>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    disabled={submitting}
+                  />
+                </label>
+
+                {previewUrl && !submitting && (
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute top-3 right-3 bg-black/50 backdrop-blur-md text-white border border-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-500 transition-colors shadow-lg"
+                  >
+                    <FaTimes />
+                  </button>
+                )}
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400 font-medium">
+                <FaInfoCircle />
+                <span>Square PNG/JPG, max 5MB recommended</span>
+              </div>
+              {errors.image && <p className="mt-1 text-xs text-red-600 font-medium">{errors.image}</p>}
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+              <label className="flex items-center cursor-pointer group">
+                <div className="relative flex items-center">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    checked={formData.is_active}
+                    onChange={handleChange}
+                    disabled={submitting}
+                    className="sr-only"
+                  />
+                  <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${
+                    formData.is_active ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}></div>
+                  <div className={`absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+                    formData.is_active ? 'translate-x-5' : 'translate-x-0'
+                  }`}></div>
+                </div>
+                <div className="ml-3 select-none">
+                  <p className="text-sm font-bold text-gray-700">Active Status</p>
+                  <p className="text-xs text-gray-500">Visible to customers when enabled</p>
+                </div>
+              </label>
             </div>
           </div>
         </div>
 
-        {/* Active Status */}
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            name="is_active"
-            checked={formData.is_active}
-            onChange={handleChange}
-            disabled={submitting}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label className="ml-2 text-sm text-gray-700">
-            Active (visible to users)
-          </label>
-        </div>
-
-        {/* Buttons */}
-        <div className="flex justify-end gap-4 pt-5 border-t">
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
           {onClose && (
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+              className="px-6 py-3 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
           )}
-
           <button
             type="submit"
             disabled={submitting}
-            className={`px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 min-w-[160px] justify-center ${
-              submitting ? 'opacity-70 cursor-not-allowed' : ''
+            className={`flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all ${
+              submitting ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'
             }`}
           >
             {submitting ? (
               <>
-                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                <span>Saving...</span>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Processing...</span>
               </>
             ) : (
-              'Add Category'
+              <>
+                <FaPlus className="text-xs" />
+                <span>Create Category</span>
+              </>
             )}
           </button>
         </div>

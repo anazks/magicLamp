@@ -11,14 +11,15 @@ import {
   FaListAlt,
   FaSignOutAlt,
   FaEdit,
-  FaChartLine,
   FaUsers,
+  FaChartLine,
+  FaInfoCircle,
 } from "react-icons/fa";
 import AddCategory from "./Addcategory";
 import AddSubCategory from "./AddSubCategory";
 import Users from "./Users";
 import Stats from "./Stats";
-import History from "./Hostory"; // rename to History.tsx when possible
+import History from "./History";
 import {
   getAllServiceCategory,
   deleteCategory,
@@ -203,7 +204,9 @@ export default function Dashboard() {
       setLoadingEmails(true);
       setEmailsError(null);
       const res = await getAllEmails();
-      const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      
+      // Handle paginated or direct array responses
+      const data = res?.data?.results || res?.data || (Array.isArray(res) ? res : []);
       setAdminEmails(data);
     } catch (err) {
       console.error("Failed to load emails:", err);
@@ -625,80 +628,146 @@ export default function Dashboard() {
           )}
 
           {activeSection === "admin-emails" && (
-            <div className="max-w-4xl space-y-6">
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-6">Manage Admin Emails</h2>
-                <form onSubmit={handleAddEmail} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <input
-                      type="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      placeholder="admin@company.com"
-                      required
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Add Email Form */}
+              <div className="lg:col-span-1">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                      <FaPlus className="text-sm" />
+                    </div>
+                    <h2 className="text-lg font-bold text-gray-800">Add Admin</h2>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-                    <select
-                      value={newPriority}
-                      onChange={(e) => setNewPriority(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                  
+                  <form onSubmit={handleAddEmail} className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
+                      <input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        placeholder="admin@example.com"
+                        required
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:bg-white focus:border-indigo-500 outline-none transition-all placeholder:text-gray-400"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Priority Level</label>
+                      <div className="relative">
+                        <select
+                          value={newPriority}
+                          onChange={(e) => setNewPriority(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
+                          className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:bg-white focus:border-indigo-500 outline-none transition-all appearance-none text-gray-700"
+                        >
+                          <option value={1}>1 – High Priority</option>
+                          <option value={2}>2 – Priority</option>
+                          <option value={3}>3 – Normal</option>
+                          <option value={4}>4 – Secondary</option>
+                          <option value={5}>5 – Low Priority</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={addingEmail}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-[0.98] disabled:opacity-50"
                     >
-                      <option value={1}>1 – Highest</option>
-                      <option value={2}>2</option>
-                      <option value={3}>3 – Normal</option>
-                      <option value={4}>4</option>
-                      <option value={5}>5 – Lowest</option>
-                    </select>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={addingEmail}
-                    className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 justify-center"
-                  >
-                    {addingEmail ? "Adding..." : (
-                      <>
-                        <FaPlus /> Add Email
-                      </>
-                    )}
-                  </button>
-                </form>
+                      {addingEmail ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <FaPlus className="text-xs" />
+                          <span>Register Admin</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm">
-                <div className="px-6 py-4 border-b">
-                  <h3 className="text-lg font-semibold text-gray-800">Existing Emails</h3>
-                </div>
-                {loadingEmails ? (
-                  <Loader />
-                ) : emailsError ? (
-                  <div className="p-8 text-center text-red-600">{emailsError}</div>
-                ) : adminEmails.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">No emails added yet</div>
-                ) : (
-                  <div className="divide-y">
-                    {adminEmails.map((item) => (
-                      <div
-                        key={item.id}
-                        className="px-6 py-4 flex items-center justify-between hover:bg-gray-50"
-                      >
-                        <div>
-                          <div className="font-medium text-gray-900">{item.email}</div>
-                          <div className="text-sm text-gray-500">Priority: {item.priority}</div>
-                        </div>
-                        <button
-                          onClick={() => item.id && setDeleteEmailId(item.id)}
-                          className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50"
-                        >
-                          <FaTrashAlt />
-                        </button>
-                      </div>
-                    ))}
+              {/* Emails List */}
+              <div className="lg:col-span-2">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <h3 className="text-lg font-bold text-gray-800">Admin Email Registry</h3>
+                    <span className="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      {adminEmails.length} Total
+                    </span>
                   </div>
-                )}
+                  
+                  {loadingEmails ? (
+                    <div className="p-12">
+                      <Loader />
+                    </div>
+                  ) : emailsError ? (
+                    <div className="p-12 text-center">
+                      <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <FaInfoCircle className="text-2xl" />
+                      </div>
+                      <p className="text-red-600 font-medium">{emailsError}</p>
+                      <button onClick={fetchAdminEmails} className="mt-4 text-sm text-indigo-600 font-bold hover:underline">Try Again</button>
+                    </div>
+                  ) : adminEmails.length === 0 ? (
+                    <div className="p-12 text-center">
+                      <div className="w-16 h-16 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <FaEnvelope className="text-2xl" />
+                      </div>
+                      <h3 className="text-gray-800 font-bold mb-1">No admins yet</h3>
+                      <p className="text-gray-500 text-sm">Registered admin emails will appear here.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50/50">
+                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">Admin Email</th>
+                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">Priority</th>
+                            <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {adminEmails.map((item) => (
+                            <tr key={item.id} className="group hover:bg-gray-50/80 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                                    {item.email.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="font-semibold text-gray-700">{item.email}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
+                                  item.priority === 1 ? 'bg-red-50 text-red-600' :
+                                  item.priority === 2 ? 'bg-orange-50 text-orange-600' :
+                                  'bg-blue-50 text-blue-600'
+                                }`}>
+                                  Level {item.priority}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <button
+                                  onClick={() => item.id && setDeleteEmailId(item.id)}
+                                  className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                  title="Remove access"
+                                >
+                                  <FaTrashAlt className="text-sm" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -894,8 +963,8 @@ export default function Dashboard() {
 
       {/* Delete Category Confirmation */}
       {deleteCategoryConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in duration-300">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Confirm Delete</h3>
             <p className="text-gray-600 mb-6">
               Are you sure you want to delete <strong>{deleteCategoryConfirm.name}</strong>?<br />
@@ -921,8 +990,8 @@ export default function Dashboard() {
 
       {/* Delete Subcategory Confirmation */}
       {deleteSubConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in duration-300">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Confirm Delete</h3>
             <p className="text-gray-600 mb-6">
               Are you sure you want to delete <strong>{deleteSubConfirm.subName}</strong>?<br />
@@ -948,8 +1017,8 @@ export default function Dashboard() {
 
       {/* Edit Category Modal */}
       {editingCategory && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in duration-300">
             <h3 className="text-xl font-semibold text-gray-900 mb-5">Edit Category</h3>
             <form onSubmit={handleUpdateCategory} className="space-y-5">
               <div>
@@ -1072,8 +1141,8 @@ export default function Dashboard() {
 
       {/* Edit Subcategory Modal */}
       {editingSubCategory && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in duration-300">
             <h3 className="text-xl font-semibold text-gray-900 mb-5">Edit Subcategory</h3>
             <form onSubmit={handleUpdateSubCategory} className="space-y-5">
               <div>
@@ -1196,8 +1265,8 @@ export default function Dashboard() {
 
       {/* Delete Email Confirmation */}
       {deleteEmailId !== null && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in duration-300">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Confirm Delete</h3>
             <p className="text-gray-600 mb-6">Remove this email from admin notifications list?</p>
             <div className="flex gap-3 justify-end">
