@@ -314,8 +314,8 @@ export default function Users() {
 
         {/* ── User Details Modal ────────────────────────────────────── */}
         {selectedUserId && (
-          <div className="fixed inset-0 backdrop-blur-sm bg-white/20 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200">
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 animate-in zoom-in duration-300">
               <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-indigo-50 rounded-lg">

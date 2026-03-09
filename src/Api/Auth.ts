@@ -68,22 +68,25 @@ export const updateProfile = async (data: any) => {
   try {
     const formData = new FormData();
 
-    // Only append fields that are provided
-    if (data.first_name !== undefined) formData.append('first_name', data.first_name.trim());
-    if (data.last_name !== undefined) formData.append('last_name', data.last_name.trim());
-    if (data.phone_number !== undefined) formData.append('phone_number', data.phone_number.trim());
-    if (data.date_of_birth !== undefined) formData.append('date_of_birth', data.date_of_birth);
-    if (data.district !== undefined) formData.append('district', data.district.trim());
-    if (data.state !== undefined) formData.append('state', data.state.trim());
-    if (data.address !== undefined) formData.append('address', data.address.trim());
-    if (data.pin_code !== undefined && data.pin_code !== null) {
-      formData.append('pin_code', String(data.pin_code));
-    }
+    // Safeguard null/undefined and append only valid fields
+    const appendIfPresent = (key: string, value: any) => {
+      if (value !== undefined && value !== null) {
+        if (typeof value === 'string') {
+          formData.append(key, value.trim());
+        } else {
+          formData.append(key, String(value));
+        }
+      }
+    };
 
-    // If profile picture upload is added later:
-    // if (data.profile_picture instanceof File) {
-    //   formData.append('profile_picture', data.profile_picture);
-    // }
+    appendIfPresent('first_name', data.first_name);
+    appendIfPresent('last_name', data.last_name);
+    appendIfPresent('phone_number', data.phone_number);
+    appendIfPresent('date_of_birth', data.date_of_birth);
+    appendIfPresent('district', data.district);
+    appendIfPresent('state', data.state);
+    appendIfPresent('address', data.address);
+    appendIfPresent('pin_code', data.pin_code);
 
     const response = await Axios.patch('/home/profile/update/', formData, {
       headers: {
@@ -98,17 +101,18 @@ export const updateProfile = async (data: any) => {
   }
 };
 export const googleAuth = async (data: any) => {
-        try {
-                let dataObj = {
-                    token: data
-                }
-            console.log("google id",dataObj);
-            const response = await Axios.post('/home/auth/google/', dataObj);
-            console.log("Google auth response------------------",response);
-            return response;
-        } catch (error) {
-            throw error;
+    try {
+        let dataObj = {
+            token: data
         }
+        console.log("Sending to /home/auth/google/:", dataObj);
+        const response = await Axios.post('/home/auth/google/', dataObj);
+        console.log("Google auth successful response:", response.data);
+        return response;
+    } catch (error: any) {
+        console.error("Google auth API error:", error.response?.data || error.message);
+        throw error;
+    }
 }
 
 export const googleCallBack = async () => {

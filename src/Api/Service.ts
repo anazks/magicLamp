@@ -3,7 +3,8 @@ import Axios from '../Axios/Axios'
 export const listServices = async () => {
     try {
         const response = await Axios.get('/services/categories/')
-        return response.data
+        // Handle paginated response if 'results' exists, else return response.data
+        return response.data?.results || response.data
     } catch (error) {
         console.error('Error fetching services:', error)
         throw error
@@ -12,11 +13,43 @@ export const listServices = async () => {
 
 export const serviceHistory = async () => {
     try {
+        console.log('Fetching service history from /services/request/...')
         const response = await Axios.get(`/services/request/`)
+        console.log('Service history response:', response.data)
         return response.data
-    } catch (error) {
-        console.error('Error fetching service history:', error)
+    } catch (error: any) {
+        console.error('Error fetching service history:', {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message
+        })
         throw error
+    }
+}
+
+export const updateServiceRequest = async (id: number | string, data: FormData) => {
+    try {
+        console.log(`Updating service request ${id}...`);
+        const response = await Axios.patch(`/services/request/${id}/edit/`, data, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        console.log('Update response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Error updating service request:', error);
+        throw error;
+    }
+}
+
+export const deleteServiceMedia = async (mediaId: number | string) => {
+    try {
+        console.log(`Deleting service media ${mediaId}...`);
+        const response = await Axios.delete(`/services/request/media/${mediaId}/delete/`);
+        console.log('Delete media response:', response);
+        return response;
+    } catch (error) {
+        console.error('Error deleting service media:', error);
+        throw error;
     }
 }
 
@@ -64,16 +97,31 @@ export const deleteCategory = async (categoryId: number) => {
         }
 }
 
-export const getAllRequestedServices = async (url:any) => {
+export const getAllRequestedServices = async (url?: string, filters?: { status?: string, category_id?: string, start_date?: string, end_date?: string, ordering?: string }) => {
     try {
-        if(url){
+        if (url) {
             console.log('Fetching requested services with URL:', url)
             const response = await Axios.get(url)
             console.log('Fetched requested services with URL:', response)
             return response
-        }else{
-            const response = await Axios.get('services/admin/requests/')
-            console.log('Fetched requested services++++++++++++++:', response)
+        } else {
+            let endpoint = 'services/admin/requests/';
+            const params = new URLSearchParams();
+            if (filters) {
+                if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+                if (filters.category_id) params.append('category_id', filters.category_id);
+                if (filters.start_date) params.append('start_date', filters.start_date);
+                if (filters.end_date) params.append('end_date', filters.end_date);
+                if (filters.ordering) params.append('ordering', filters.ordering);
+            }
+            
+            const queryString = params.toString();
+            if (queryString) {
+                endpoint += `?${queryString}`;
+            }
+
+            const response = await Axios.get(endpoint)
+            console.log('Fetched requested services:', response)
             return response 
         }
        
@@ -292,9 +340,16 @@ export const deleteSubCategory = async (subCategoryId: number) => {
     }
 }
 
-export const DashboardStats = async () => {
+export const DashboardStats = async (startDate?: string, endDate?: string) => {
     try {
-        const response = await Axios.get('services/admin/dashboard-analytics/')
+        let url = 'services/admin/dashboard-analytics/';
+        if (startDate || endDate) {
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            url += `?${params.toString()}`;
+        }
+        const response = await Axios.get(url)
         console.log('Fetched dashboard stats:', response)
         return response.data
     } catch (error) {
