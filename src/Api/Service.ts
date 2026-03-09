@@ -40,6 +40,17 @@ export const updateServiceRequest = async (id: number | string, data: FormData) 
         throw error;
     }
 }
+export const cancelServiceRequest = async (id: number | string) => {
+    try {
+        console.log(`Cancelling service request ${id}...`);
+        const response = await Axios.post(`/services/request/${id}/cancel/`);
+        console.log('Cancel response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Error cancelling service request:', error);
+        throw error;
+    }
+}
 
 export const deleteServiceMedia = async (mediaId: number | string) => {
     try {
