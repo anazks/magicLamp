@@ -53,6 +53,7 @@ export default function History() {
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<ServiceHistoryItem | null>(null);
   const [editingItem, setEditingItem] = useState<ServiceHistoryItem | null>(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState<number | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -109,19 +110,23 @@ export default function History() {
     fetchHistory();
   };
   
-  const handleCancel = async (id: number) => {
-    if (window.confirm("Are you sure you want to cancel this service request?")) {
-      try {
-        setLoading(true);
-        await cancelServiceRequest(id);
-        showToast("Request cancelled successfully", "success");
-        setSelectedItem(null);
-        fetchHistory();
-      } catch (error) {
-        showToast("Failed to cancel request", "error");
-      } finally {
-        setLoading(false);
-      }
+  const handleCancel = (id: number) => {
+    setCancelConfirmId(id);
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelConfirmId) return;
+    try {
+      setLoading(true);
+      await cancelServiceRequest(cancelConfirmId);
+      showToast("Request cancelled successfully", "success");
+      setSelectedItem(null);
+      fetchHistory();
+    } catch (error) {
+      showToast("Failed to cancel request", "error");
+    } finally {
+      setCancelConfirmId(null);
+      setLoading(false);
     }
   };
 
@@ -223,18 +228,18 @@ export default function History() {
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header Section */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button 
               onClick={() => navigate(-1)} 
-              className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
+              className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
             >
-              <FaArrowLeft size={14} />
+              <FaArrowLeft size={12} />
             </button>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">History</h1>
+            <h1 className="text-lg font-bold text-gray-900 tracking-tight">History</h1>
           </div>
-          <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-            <FaHistory size={16} />
+          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+            <FaHistory size={14} />
           </div>
         </div>
       </div>
@@ -360,37 +365,48 @@ export default function History() {
           />
           <div className="relative w-full max-w-lg bg-white sm:rounded-xl shadow-2xl overflow-hidden animate-slide-up max-h-[90vh] flex flex-col border border-gray-200">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Service Details</h2>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-0.5">ORDER #{selectedItem.request_id}</p>
+            <div className="px-4 py-3 sm:px-5 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-100/50 shrink-0">
+                  <FaHistory className="text-blue-500 text-sm" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">Service Details</h2>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Order #{selectedItem.request_id}</p>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedItem(null)}
-                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-all"
+                className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-all border border-gray-200 shadow-sm"
               >
-                <FaTimes size={18} />
+                <FaTimes size={14} />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 overflow-y-auto space-y-6 pb-12">
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 sm:space-y-5 pb-8">
               {/* Status & Service Header */}
-              <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight break-words">{selectedItem.category_name}</h3>
-                  {(() => {
-                    const s = getStatusStyle(selectedItem.status);
-                    return (
-                      <div className={`px-4 py-1 rounded-full border ${s.bg} ${s.text} ${s.border} text-[10px] sm:text-xs font-bold uppercase tracking-wider w-fit whitespace-nowrap`}>
-                        {s.label}
-                      </div>
-                    );
-                  })()}
+              <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-4 sm:p-5 border border-gray-100 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -mr-16 -mt-16 opacity-60"></div>
+                <div className="relative">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1.5">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight break-words">{selectedItem.category_name}</h3>
+                    {(() => {
+                      const s = getStatusStyle(selectedItem.status);
+                      return (
+                        <div className={`px-3 py-1 rounded-full border ${s.bg} ${s.text} ${s.border} text-[10px] font-bold uppercase tracking-wider w-fit whitespace-nowrap shadow-sm`}>
+                          {s.label}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  {selectedItem.subcategory_name && (
+                    <p className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                       <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                       {selectedItem.subcategory_name}
+                    </p>
+                  )}
                 </div>
-                {selectedItem.subcategory_name && (
-                  <p className="text-sm font-medium text-gray-500">{selectedItem.subcategory_name}</p>
-                )}
               </div>
 
               {/* Information Grid */}
@@ -482,47 +498,52 @@ export default function History() {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-5 pb-24 border-t border-gray-200 bg-white space-y-3">
-              <div className="flex flex-col sm:grid sm:grid-cols-2 gap-3">
-                <button
-                  onClick={() => {
-                    const lat = parseFloat(selectedItem.latitude);
-                    const lng = parseFloat(selectedItem.longitude);
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                      window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank");
-                    }
-                  }}
-                  className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-gray-200 transition-all border border-gray-200"
-                >
-                  <FaMapMarkerAlt size={12} />
-                  Track on Map
-                </button>
+            <div className="px-4 sm:px-6 py-4 sm:py-5 pb-20 sm:pb-24 border-t border-gray-200 bg-white space-y-2.5 sm:space-y-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                {selectedItem.status.toLowerCase() !== "cancelled" && (
+                  <button
+                    onClick={() => {
+                      const lat = parseFloat(selectedItem.latitude);
+                      const lng = parseFloat(selectedItem.longitude);
+                      if (!isNaN(lat) && !isNaN(lng)) {
+                        window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank");
+                      }
+                    }}
+                    className="w-full py-2.5 sm:py-3 bg-gray-100 text-gray-700 rounded-lg font-bold text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 sm:gap-2 hover:bg-gray-200 transition-all border border-gray-200"
+                  >
+                    <FaMapMarkerAlt size={12} className="shrink-0" />
+                    <span className="hidden sm:inline">Track on Map</span>
+                    <span className="sm:hidden">Track</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setSelectedItem(null)}
-                  className="w-full py-3 bg-gray-900 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all active:scale-95 text-center"
+                  className={`w-full py-2.5 sm:py-3 bg-gray-900 text-white rounded-lg font-bold text-[10px] sm:text-xs uppercase tracking-wider transition-all active:scale-95 text-center ${selectedItem.status.toLowerCase() === "cancelled" ? "col-span-2" : ""}`}
                 >
                   Close
                 </button>
               </div>
 
               {selectedItem.status.toLowerCase() === "pending" && (
-                <div className="flex flex-col sm:grid sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <button
                     onClick={() => {
                       setEditingItem(selectedItem);
                       setSelectedItem(null);
                     }}
-                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-95"
+                    className="w-full py-2.5 sm:py-3 bg-blue-600 text-white rounded-lg font-bold text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 sm:gap-2 hover:bg-blue-700 transition-all active:scale-95"
                   >
-                    <FaEdit size={12} />
-                    Edit Request
+                    <FaEdit size={12} className="shrink-0" />
+                    <span className="hidden sm:inline">Edit Request</span>
+                    <span className="sm:hidden">Edit</span>
                   </button>
                   <button
                     onClick={() => handleCancel(selectedItem.id)}
-                    className="w-full py-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-rose-100 transition-all active:scale-95"
+                    className="w-full py-2.5 sm:py-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg font-bold text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 sm:gap-2 hover:bg-rose-100 transition-all active:scale-95"
                   >
-                    <FaTimesCircle size={12} />
-                    Cancel Request
+                    <FaTimesCircle size={12} className="shrink-0" />
+                    <span className="hidden sm:inline">Cancel Request</span>
+                    <span className="sm:hidden">Cancel</span>
                   </button>
                 </div>
               )}
@@ -539,6 +560,39 @@ export default function History() {
           onUpdate={handleUpdate}
           showToast={showToast}
         />
+      )}
+
+      {/* Cancel Confirmation Custom Modal */}
+      {cancelConfirmId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/60 animate-fade-in" 
+            onClick={() => setCancelConfirmId(null)} 
+          />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 animate-zoom-in border border-gray-100 text-center">
+            <div className="w-16 h-16 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 mx-auto mb-4 border-4 border-white shadow-sm">
+              <FaTimesCircle size={28} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Cancel Service?</h3>
+            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+              Are you sure you want to cancel this service request? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancelConfirmId(null)}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all active:scale-95"
+              >
+                No, Keep it
+              </button>
+              <button
+                onClick={confirmCancel}
+                className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-bold text-sm hover:bg-rose-700 transition-all shadow-md shadow-rose-200 active:scale-95"
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Standard Toast */}
