@@ -135,26 +135,26 @@ export default function Profile() {
     <div className="min-h-screen bg-gray-100 pb-12 animate-fade-in relative">
       {/* Compact Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-lg font-bold text-white shadow-md">
+        <div className="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-base font-bold text-white shadow-md">
               {fullName.charAt(0).toUpperCase()}
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 leading-tight">{fullName}</h1>
+              <h1 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">{fullName}</h1>
               <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Member Since 2024</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
              <button
               onClick={() => setIsEditing(!isEditing)}
-              className={`p-2.5 rounded-lg transition-all ${isEditing ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}
+              className={`p-2 rounded-lg transition-all ${isEditing ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}
               title={isEditing ? "Quit Editing" : "Edit Profile"}
             >
-              {isEditing ? <FaTimes size={16} /> : <FaEdit size={16} />}
+              {isEditing ? <FaTimes size={14} /> : <FaEdit size={14} />}
             </button>
-            <button onClick={handleLogout} className="p-2.5 bg-gray-50 text-gray-500 rounded-lg hover:text-rose-600 border border-gray-100" title="Logout">
-              <FaSignOutAlt size={16} />
+            <button onClick={handleLogout} className="p-2 bg-gray-50 text-gray-500 rounded-lg hover:text-rose-600 border border-gray-100" title="Logout">
+              <FaSignOutAlt size={14} />
             </button>
           </div>
         </div>
